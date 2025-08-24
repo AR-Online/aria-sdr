@@ -205,3 +205,15 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# ARIA
+.env
+.env.*
+.venv/
+.vscode/
+.idea/
+__pycache__/
+*.log
+# exports e caches locais
+/typebot/*.bak
+/n8n/.cache/
