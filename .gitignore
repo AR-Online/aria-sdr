@@ -1,6 +1,16 @@
-# Python
+﻿# Python
 __pycache__/
 *.pyc
 
 # venv
 .venv/
+venv/
+
+# Editor/OS
+.vscode/
+.idea/
+.DS_Store
+
+# Credenciais
+.env
+*.env
