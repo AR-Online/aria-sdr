@@ -1,16 +1,61 @@
-﻿# Python
+﻿# ---- Python geral -----------------------------------------------------
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+.eggs/
+.mypy_cache/
+.pytest_cache/
+.coverage
+coverage.xml
 
-# venv
+# ---- Ambientes virtuais ----------------------------------------------
 .venv/
 venv/
+ENV/
+env/
+# Artefatos criados por engano na raiz (Windows)
+include/
+Lib/
+Scripts/
+site-packages/
 
-# Editor/OS
+# ---- Dependências/Build ----------------------------------------------
+build/
+dist/
+.wheelhouse/
+
+# ---- Editor/SO --------------------------------------------------------
 .vscode/
 .idea/
+*.code-workspace
 .DS_Store
+Thumbs.db
 
-# Credenciais
+# ---- Config/Secrets ---------------------------------------------------
 .env
-*.env
+.env.*
+.python-version
+
+# ---- Banco de dados / logs locais ------------------------------------
+*.db
+*.sqlite3
+*.log
+logs/
+uvicorn*.log
+
+# ---- App (projeto) ----------------------------------------------------
+audio_files/
+# (Se precisar de exemplos, use `audio_samples/` e adicione um .gitkeep)
+
+# ---- JavaScript/Node (se houver) -------------------------------------
+node_modules/
+.npm/
+
+# ---- Tests/outros -----------------------------------------------------
+htmlcov/
+.tox/
+.cache/
