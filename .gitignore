@@ -1,16 +1,93 @@
-﻿# Python
-__pycache__/
-*.pyc
+﻿# .gitignore (recomendado)
 
-# venv
+# ---- Python -----------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+.eggs/
+.mypy_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+
+# ---- Environments -----------------------------------------------------
 .venv/
 venv/
+ENV/
+env/
+# Artefatos Windows que às vezes acabam na raiz por engano
+include/
+Lib/
+Scripts/
+site-packages/
 
-# Editor/OS
+# ---- Build/Dist -------------------------------------------------------
+build/
+dist/
+.wheelhouse/
+
+# ---- Editor / SO ------------------------------------------------------
 .vscode/
 .idea/
+*.code-workspace
 .DS_Store
+Thumbs.db
 
-# Credenciais
+# ---- Config / Secrets -------------------------------------------------
 .env
-*.env
+.env.*
+.python-version
+
+# ---- DB / Logs locais -------------------------------------------------
+*.db
+*.sqlite3
+*.log
+logs/
+uvicorn*.log
+
+# ---- App --------------------------------------------------------------
+audio_files/
+# (Se precisar de exemplos, use "audio_samples/" com um .gitkeep)
+
+# ---- Node (se houver) -------------------------------------------------
+node_modules/
+.npm/
+
+# ---- Test/Coverage extras --------------------------------------------
+htmlcov/
+.tox/
+.cache/
+
+
+# ----------------------------------------------------------------------
+# .gitattributes (sugestão) — linha por linha
+#   > fixe finais de linha consistentes (Windows/Linux)
+# ----------------------------------------------------------------------
+*.py     text eol=lf
+*.md     text eol=lf
+*.yml    text eol=lf
+*.yaml   text eol=lf
+*.json   text eol=lf
+*.sh     text eol=lf
+*.ps1    text eol=crlf
+*.bat    text eol=crlf
+*        text=auto
+
+
+# ----------------------------------------------------------------------
+# Comandos (referência rápida)
+# ----------------------------------------------------------------------
+# 1) Aplicar .gitignore / .gitattributes
+#    (no terminal do VS Code)
+#
+# git add .gitignore .gitattributes
+# git rm --cached .env           # para de versionar .env, mas mantém no disco
+# git commit -m "chore(repo): update .gitignore + add .gitattributes"
+# git push
+#
+# 2) Confirmar que o .env está ignorado
+# git check-ignore -v .env
