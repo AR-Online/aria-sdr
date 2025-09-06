@@ -195,13 +195,13 @@ def save_audio_local(audio_data: bytes, file_id: str, format: str) -> str:
     """Salva áudio localmente e retorna o caminho"""
     audio_dir = Path("audio_files")
     audio_dir.mkdir(exist_ok=True)
-    
+
     filename = f"{file_id}.{format}"
     filepath = audio_dir / filename
-    
+
     with open(filepath, "wb") as f:
         f.write(audio_data)
-    
+
     return f"{PUBLIC_BASE_URL}/audio/{filename}"
 
 def save_audio_s3(audio_data: bytes, file_id: str, format: str) -> str:
@@ -209,26 +209,26 @@ def save_audio_s3(audio_data: bytes, file_id: str, format: str) -> str:
     try:
         import boto3
         from botocore.exceptions import ClientError
-        
+
         s3_client = boto3.client(
             's3',
             region_name=S3_REGION,
             aws_access_key_id=S3_ACCESS_KEY,
             aws_secret_access_key=S3_SECRET_KEY
         )
-        
+
         filename = f"{file_id}.{format}"
         s3_key = f"tts/{filename}"
-        
+
         s3_client.put_object(
             Bucket=S3_BUCKET,
             Key=s3_key,
             Body=audio_data,
             ContentType=f"audio/{format}"
         )
-        
+
         return f"https://{S3_BUCKET}.s3.{S3_REGION}.amazonaws.com/{s3_key}"
-        
+
     except ImportError:
         raise HTTPException(status_code=500, detail="boto3 não instalado para armazenamento S3")
     except ClientError as e:
@@ -245,7 +245,7 @@ def tts_openai(text: str, voice: str, format: str) -> bytes:
     """Converte texto em áudio usando OpenAI TTS"""
     if client is None:
         raise HTTPException(status_code=500, detail="Cliente OpenAI não configurado")
-    
+
     try:
         response = client.audio.speech.create(
             model="tts-1",
@@ -261,21 +261,21 @@ def tts_azure(text: str, voice: str, format: str) -> bytes:
     """Converte texto em áudio usando Azure Cognitive Services"""
     try:
         import requests
-        
+
         # Configurações Azure (precisa ser configurado via env vars)
         azure_key = os.getenv("AZURE_SPEECH_KEY")
         azure_region = os.getenv("AZURE_SPEECH_REGION")
-        
+
         if not azure_key or not azure_region:
             raise HTTPException(status_code=500, detail="Azure Speech não configurado")
-        
+
         url = f"https://{azure_region}.tts.speech.microsoft.com/cognitiveservices/v1"
         headers = {
             "Ocp-Apim-Subscription-Key": azure_key,
             "Content-Type": "application/ssml+xml",
             "X-Microsoft-OutputFormat": f"audio-16khz-128kbitrate-mono-{format}"
         }
-        
+
         ssml = f"""
         <speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='pt-BR'>
             <voice name='{voice}'>
@@ -283,11 +283,11 @@ def tts_azure(text: str, voice: str, format: str) -> bytes:
             </voice>
         </speak>
         """
-        
+
         response = requests.post(url, headers=headers, data=ssml.encode('utf-8'))
         response.raise_for_status()
         return response.content
-        
+
     except ImportError:
         raise HTTPException(status_code=500, detail="requests não instalado para Azure TTS")
     except Exception as e:
@@ -298,22 +298,22 @@ def tts_polly(text: str, voice: str, format: str) -> bytes:
     try:
         import boto3
         from botocore.exceptions import ClientError
-        
+
         polly_client = boto3.client(
             'polly',
             region_name=S3_REGION,
             aws_access_key_id=S3_ACCESS_KEY,
             aws_secret_access_key=S3_SECRET_KEY
         )
-        
+
         response = polly_client.synthesize_speech(
             Text=text,
             OutputFormat=format,
             VoiceId=voice
         )
-        
+
         return response['AudioStream'].read()
-        
+
     except ImportError:
         raise HTTPException(status_code=500, detail="boto3 não instalado para AWS Polly")
     except ClientError as e:
@@ -323,9 +323,9 @@ def tts_gcloud(text: str, voice: str, format: str) -> bytes:
     """Converte texto em áudio usando Google Cloud Text-to-Speech"""
     try:
         from google.cloud import texttospeech
-        
+
         client = texttospeech.TextToSpeechClient()
-        
+
         synthesis_input = texttospeech.SynthesisInput(text=text)
         voice_config = texttospeech.VoiceSelectionParams(
             language_code="pt-BR",
@@ -334,15 +334,15 @@ def tts_gcloud(text: str, voice: str, format: str) -> bytes:
         audio_config = texttospeech.AudioConfig(
             audio_encoding=getattr(texttospeech.AudioEncoding, format.upper())
         )
-        
+
         response = client.synthesize_speech(
             input=synthesis_input,
             voice=voice_config,
             audio_config=audio_config
         )
-        
+
         return response.audio_content
-        
+
     except ImportError:
         raise HTTPException(status_code=500, detail="google-cloud-texttospeech não instalado")
     except Exception as e:
@@ -352,18 +352,18 @@ def tts_eleven(text: str, voice: str, format: str) -> bytes:
     """Converte texto em áudio usando ElevenLabs"""
     try:
         import requests
-        
+
         eleven_key = os.getenv("ELEVENLABS_API_KEY")
         if not eleven_key:
             raise HTTPException(status_code=500, detail="ElevenLabs API key não configurada")
-        
+
         url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice}"
         headers = {
             "Accept": f"audio/{format}",
             "Content-Type": "application/json",
             "xi-api-key": eleven_key
         }
-        
+
         data = {
             "text": text,
             "model_id": "eleven_monolingual_v1",
@@ -372,11 +372,11 @@ def tts_eleven(text: str, voice: str, format: str) -> bytes:
                 "similarity_boost": 0.5
             }
         }
-        
+
         response = requests.post(url, json=data, headers=headers)
         response.raise_for_status()
         return response.content
-        
+
     except ImportError:
         raise HTTPException(status_code=500, detail="requests não instalado para ElevenLabs TTS")
     except Exception as e:
@@ -385,7 +385,7 @@ def tts_eleven(text: str, voice: str, format: str) -> bytes:
 def generate_tts_audio(text: str, voice: str, format: str, provider: str) -> bytes:
     """Gera áudio usando o provedor especificado"""
     provider = provider.lower()
-    
+
     if provider == "openai":
         return tts_openai(text, voice, format)
     elif provider == "azure":
@@ -470,23 +470,23 @@ def text_to_speech(req: TTSRequest, _tok: str = Depends(require_auth)):
         provider = req.provider or TTS_PROVIDER
         voice = req.voice or TTS_VOICE
         format = req.format or TTS_FORMAT
-        
+
         # Validar formato
         if format not in ["mp3", "ogg"]:
             raise HTTPException(status_code=400, detail="Formato deve ser 'mp3' ou 'ogg'")
-        
+
         # Gerar ID único para o arquivo
         file_id = generate_file_id(req.text, voice, provider)
-        
+
         # Gerar áudio usando o provedor especificado
         audio_data = generate_tts_audio(req.text, voice, format, provider)
-        
+
         # Salvar áudio
         audio_url = save_audio(audio_data, file_id, format)
-        
+
         # Gerar hash do texto para cache
         text_hash = hashlib.md5(req.text.encode()).hexdigest()
-        
+
         return TTSResponse(
             audio_url=audio_url,
             file_id=file_id,
@@ -495,7 +495,7 @@ def text_to_speech(req: TTSRequest, _tok: str = Depends(require_auth)):
             format=format,
             text_hash=text_hash
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
