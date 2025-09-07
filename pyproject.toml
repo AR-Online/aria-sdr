@@ -16,7 +16,7 @@ select = [
   "UP",
   "SIM",
 ]
-ignore = []
+ignore = ["E501", "E402", "B008", "SIM105"]
 fixable = ["ALL"]
 
 [tool.ruff.format]

@@ -95,13 +95,14 @@ python aria_rag_supabase.py query --question "Como funciona a AR Online?" --k 5 
 """
 
 from __future__ import annotations
+
+import argparse
+import json
 import os
 import re
-import json
-import math
-import argparse
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable, List, Dict, Any, Optional
+from typing import Any
 
 import requests
 from dotenv import load_dotenv
@@ -109,7 +110,7 @@ from dotenv import load_dotenv
 try:
     # OpenAI SDK (>=1.0)
     from openai import OpenAI
-except Exception as e:  # pragma: no cover
+except Exception:  # pragma: no cover
     OpenAI = None  # type: ignore
 
 # ---------------------------
@@ -141,7 +142,7 @@ if not OPENAI_API_KEY:
 SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
 
 
-def split_sentences(text: str) -> List[str]:
+def split_sentences(text: str) -> list[str]:
     text = re.sub(r"\s+", " ", text.strip())
     if not text:
         return []
@@ -151,7 +152,7 @@ def split_sentences(text: str) -> List[str]:
     return [p.strip() for p in parts if p.strip()]
 
 
-def chunk_text(text: str, max_tokens: int = 350, overlap_tokens: int = 50) -> List[str]:
+def chunk_text(text: str, max_tokens: int = 350, overlap_tokens: int = 50) -> list[str]:
     """Chunking aproximado por contagem de caracteres (proxy de tokens).
     Para uso em FAQ/documentação funciona bem e é estável.
     """
@@ -160,8 +161,8 @@ def chunk_text(text: str, max_tokens: int = 350, overlap_tokens: int = 50) -> Li
     overlap_chars = overlap_tokens * approx_token_ratio
 
     sents = split_sentences(text)
-    chunks: List[str] = []
-    buf: List[str] = []
+    chunks: list[str] = []
+    buf: list[str] = []
     cur_len = 0
 
     def flush():
@@ -185,9 +186,11 @@ def chunk_text(text: str, max_tokens: int = 350, overlap_tokens: int = 50) -> Li
     # drop possíveis vazios
     return [c for c in chunks if c]
 
+
 # ---------------------------
 # Embeddings
 # ---------------------------
+
 
 def get_openai_client() -> OpenAI:
     if OpenAI is None:
@@ -195,7 +198,7 @@ def get_openai_client() -> OpenAI:
     return OpenAI(api_key=OPENAI_API_KEY)
 
 
-def embed_texts(texts: List[str], model: str = EMBEDDING_MODEL) -> List[List[float]]:
+def embed_texts(texts: list[str], model: str = EMBEDDING_MODEL) -> list[list[float]]:
     client = get_openai_client()
     # A API do SDK 1.x aceita lista em 'input'
     resp = client.embeddings.create(model=model, input=texts)
@@ -209,11 +212,13 @@ def embed_texts(texts: List[str], model: str = EMBEDDING_MODEL) -> List[List[flo
             )
     return vectors
 
+
 # ---------------------------
 # Supabase REST: upsert & query (RPC)
 # ---------------------------
 
-def supabase_upsert_chunks(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+
+def supabase_upsert_chunks(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     url = f"{SUPABASE_URL}/rest/v1/{ARIA_TABLE}"
     r = requests.post(url, headers=HEADERS_JSON, data=json.dumps(rows))
     if r.status_code >= 300:
@@ -221,7 +226,9 @@ def supabase_upsert_chunks(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return r.json()
 
 
-def supabase_match(query_embedding: List[float], k: int = 5, filter_source: Optional[str] = None) -> List[Dict[str, Any]]:
+def supabase_match(
+    query_embedding: list[float], k: int = 5, filter_source: str | None = None
+) -> list[dict[str, Any]]:
     url = f"{SUPABASE_URL}/rest/v1/rpc/match_aria_chunks"
     payload = {
         "query_embedding": query_embedding,
@@ -233,15 +240,17 @@ def supabase_match(query_embedding: List[float], k: int = 5, filter_source: Opti
         raise RuntimeError(f"Erro RPC match: {r.status_code} -> {r.text}")
     return r.json()
 
+
 # ---------------------------
 # Ingestão
 # ---------------------------
+
 
 @dataclass
 class IngestItem:
     doc_id: str
     content: str
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
 
 def iter_files(path: str) -> Iterable[str]:
@@ -255,19 +264,19 @@ def iter_files(path: str) -> Iterable[str]:
                     yield os.path.join(root, f)
 
 
-def load_items_from_path(path: str) -> List[IngestItem]:
-    items: List[IngestItem] = []
+def load_items_from_path(path: str) -> list[IngestItem]:
+    items: list[IngestItem] = []
     for fp in iter_files(path):
-        with open(fp, "r", encoding="utf-8") as fh:
+        with open(fp, encoding="utf-8") as fh:
             txt = fh.read()
         doc_id = os.path.relpath(fp, start=os.path.dirname(path) or ".").replace(os.sep, "/")
         items.append(IngestItem(doc_id=doc_id, content=txt, metadata={"path": fp}))
     return items
 
 
-def load_items_from_jsonl(jsonl_path: str) -> List[IngestItem]:
-    items: List[IngestItem] = []
-    with open(jsonl_path, "r", encoding="utf-8") as fh:
+def load_items_from_jsonl(jsonl_path: str) -> list[IngestItem]:
+    items: list[IngestItem] = []
+    with open(jsonl_path, encoding="utf-8") as fh:
         for line in fh:
             if not line.strip():
                 continue
@@ -282,7 +291,13 @@ def load_items_from_jsonl(jsonl_path: str) -> List[IngestItem]:
     return items
 
 
-def ingest(path: Optional[str], jsonl: Optional[str], source: str, explicit_doc_id: Optional[str] = None, max_tokens: int = 350) -> None:
+def ingest(
+    path: str | None,
+    jsonl: str | None,
+    source: str,
+    explicit_doc_id: str | None = None,
+    max_tokens: int = 350,
+) -> None:
     # Carrega itens
     if jsonl:
         items = load_items_from_jsonl(jsonl)
@@ -301,7 +316,7 @@ def ingest(path: Optional[str], jsonl: Optional[str], source: str, explicit_doc_
             continue
         vectors = embed_texts(chunks)
         rows = []
-        for idx, (ch, emb) in enumerate(zip(chunks, vectors)):
+        for idx, (ch, emb) in enumerate(zip(chunks, vectors, strict=False)):
             rows.append(
                 {
                     "source": source,
@@ -315,11 +330,13 @@ def ingest(path: Optional[str], jsonl: Optional[str], source: str, explicit_doc_
         saved = supabase_upsert_chunks(rows)
         print(f"✔ Ingestado: {it.doc_id} | chunks: {len(saved)}")
 
+
 # ---------------------------
 # Consulta (RAG)
 # ---------------------------
 
-def query(question: str, k: int = 5, filter_source: Optional[str] = None) -> None:
+
+def query(question: str, k: int = 5, filter_source: str | None = None) -> None:
     vectors = embed_texts([question])
     qv = vectors[0]
     hits = supabase_match(qv, k=k, filter_source=filter_source)
@@ -337,11 +354,15 @@ def query(question: str, k: int = 5, filter_source: Optional[str] = None) -> Non
     context = "\n\n".join(f"[{i+1}] " + c for i, c in enumerate(context_blobs))
     print("\n--- PROMPT SUGERIDO ---\n")
     print("CONTEXTO:\n" + context)
-    print("\nINSTRUÇÕES AO MODELO:\n- Responda em pt-BR.\n- Use APENAS o CONTEXTO. Se algo não estiver no contexto, diga que não encontrou e ofereça encaminhar ao time.\n- Seja objetivo e cite a fonte (doc_id/chunk_index) quando útil.")
+    print(
+        "\nINSTRUÇÕES AO MODELO:\n- Responda em pt-BR.\n- Use APENAS o CONTEXTO. Se algo não estiver no contexto, diga que não encontrou e ofereça encaminhar ao time.\n- Seja objetivo e cite a fonte (doc_id/chunk_index) quando útil."
+    )
+
 
 # ---------------------------
 # CLI
 # ---------------------------
+
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="ARIA • RAG com Supabase (pgvector)")
@@ -384,16 +405,13 @@ def main():
 
 if __name__ == "__main__":
     main()
-import logging
-import os
-from typing import Any, Dict, Optional
-
-from dotenv import load_dotenv
 
 # 1) Load environment with override for local dev
 load_dotenv(override=True)
 
 # 2) Minimal, idempotent logging setup
+import logging  # ensure available even if file layout is unusual
+
 if not logging.getLogger().handlers:
     logging.basicConfig(
         level=logging.INFO,
@@ -410,7 +428,7 @@ except Exception:  # pragma: no cover
     requests = None  # type: ignore
 
 
-def http_post_json(url: str, payload: Dict[str, Any], timeout: Optional[float] = None) -> Any:
+def http_post_json(url: str, payload: dict[str, Any], timeout: float | None = None) -> Any:
     """POST JSON with timeout and basic error handling.
 
     Returns parsed JSON or raises on errors/timeouts.

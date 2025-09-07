@@ -1,5 +1,16 @@
-��client = OpenAI(api_key="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")
+import os
+from dataclasses import dataclass
 
-ASSISTANT_ID = "asst_Y9PUGUtEqgQWhg1WSkgPPzt6"
+from dotenv import load_dotenv
 
-AUTH_TOKEN = "REALIZATI2025DT"
+load_dotenv(override=True)
+
+
+@dataclass
+class Settings:
+    supabase_url: str = os.getenv("SUPABASE_URL", "")
+    supabase_service_role_key: str = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
+
+
+settings = Settings()

@@ -1,16 +1,20 @@
 # main.py
 from __future__ import annotations
 
-import os, re, time, secrets, json, logging
-from typing import Any, Dict, List, Optional, Tuple
+import logging
+import os
+import re
+import secrets
+import time
+from typing import Any
 
 import requests
+from dotenv import find_dotenv, load_dotenv
+from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-from fastapi import FastAPI, Depends, HTTPException, Request, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel
-from dotenv import load_dotenv, find_dotenv
 
 # ——————————————————————————————————————————————————
 # Boot / Config
@@ -23,7 +27,8 @@ auth_scheme = HTTPBearer(auto_error=False)
 log = logging.getLogger(__name__)
 
 # Session para RAG com retry/backoff
-_rag_session: Optional[requests.Session] = None
+_rag_session: requests.Session | None = None
+
 
 def get_rag_session() -> requests.Session:
     global _rag_session
@@ -41,6 +46,7 @@ def get_rag_session() -> requests.Session:
         _rag_session = s
     return _rag_session
 
+
 def require_auth(cred: HTTPAuthorizationCredentials = Depends(auth_scheme)) -> str:
     if not cred:
         raise HTTPException(401, "Missing Authorization header")
@@ -49,25 +55,28 @@ def require_auth(cred: HTTPAuthorizationCredentials = Depends(auth_scheme)) -> s
         raise HTTPException(401, "Token inválido")
     return token
 
+
 # ——————————————————————————————————————————————————
 # Models (uma vez só)
 # ——————————————————————————————————————————————————
 class AssistRequest(BaseModel):
-    input: Optional[str] = None
-    user_text: Optional[str] = None
-    variables: Optional[Dict[str, Any]] = None
-    channel: Optional[str] = None
-    thread_id: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None
+    input: str | None = None
+    user_text: str | None = None
+    variables: dict[str, Any] | None = None
+    channel: str | None = None
+    thread_id: str | None = None
+    metadata: dict[str, Any] | None = None
+
 
 class AssistResponse(BaseModel):
     reply_text: str
-    route: Optional[str] = None
-    thread_id: Optional[str] = None
-    variables: Optional[Dict[str, Any]] = None
-    confidence: Optional[float] = None
-    next_action: Optional[str] = None
-    tags: Optional[List[str]] = None
+    route: str | None = None
+    thread_id: str | None = None
+    variables: dict[str, Any] | None = None
+    confidence: float | None = None
+    next_action: str | None = None
+    tags: list[str] | None = None
+
 
 # ——————————————————————————————————————————————————
 # OpenAI (Assistants) — opcional
@@ -78,12 +87,14 @@ ASSISTANT_TIMEOUT_SECONDS = float(os.getenv("ASSISTANT_TIMEOUT_SECONDS", "12"))
 
 try:
     from openai import OpenAI  # type: ignore
+
     client_assistant = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 except Exception:  # pragma: no cover
     OpenAI = None  # type: ignore
     client_assistant = None
 
-def wait_run(thread_id: str, run_id: str, timeout_seconds: Optional[float] = None):
+
+def wait_run(thread_id: str, run_id: str, timeout_seconds: float | None = None):
     if client_assistant is None:
         return None
     deadline = time.time() + timeout_seconds if timeout_seconds and timeout_seconds > 0 else None
@@ -94,6 +105,7 @@ def wait_run(thread_id: str, run_id: str, timeout_seconds: Optional[float] = Non
         if deadline and time.time() >= deadline:
             return None
         time.sleep(0.5)
+
 
 def last_assistant_message(thread_id: str) -> str:
     if client_assistant is None:
@@ -107,54 +119,67 @@ def last_assistant_message(thread_id: str) -> str:
                 continue
     return ""
 
+
 # ——————————————————————————————————————————————————
 # Regras de negócio — triagem + volumetria
 # ——————————————————————————————————————————————————
-def classify_route(user_text: str, v: Dict[str, Any]) -> Tuple[Optional[str], Dict[str, str], Optional[str]]:
+def classify_route(
+    user_text: str, v: dict[str, Any]
+) -> tuple[str | None, dict[str, str], str | None]:
     t = (user_text or "").lower()
-    route: Optional[str] = None
-    vars_out: Dict[str, str] = {}
-    next_action: Optional[str] = None
+    route: str | None = None
+    vars_out: dict[str, str] = {}
+    next_action: str | None = None
 
-    fp = str((v.get("fluxo_path") or "")).strip().lower()
+    fp = str(v.get("fluxo_path") or "").strip().lower()
     if fp in {"envio", "recebimento"}:
         route = fp
     else:
-        if any(k in t for k in ["recebi", "receb", "chegou", "abriu", "abertura", "confirmacao de leitura"]):
+        if any(
+            k in t
+            for k in ["recebi", "receb", "chegou", "abriu", "abertura", "confirmacao de leitura"]
+        ):
             route = "recebimento"
-        elif any(k in t for k in ["enviar", "envio", "mandar", "disparar", "disparo", "quero enviar"]):
+        elif any(
+            k in t for k in ["enviar", "envio", "mandar", "disparar", "disparo", "quero enviar"]
+        ):
             route = "envio"
 
     if route == "envio":
         limiar = int(v.get("VOLUME_ALTO_LIMIAR", 1200))
         vol_src = str(v.get("lead_volumetria", v.get("lead_duvida", ""))).lower()
 
-        n: Optional[int] = None
+        n: int | None = None
         m = re.findall(r"\d{1,3}(?:[\.,]\d{3})+|\d+", vol_src)
         if m:
             digits = re.sub(r"[^\d]", "", m[-1])
             if digits:
                 n = int(digits)
 
-        kw_high = re.search(r"(alto volume|grande volume|massivo|lote|mil|1k|1000\+|acima de|>\s*1000)", vol_src)
+        kw_high = re.search(
+            r"(alto volume|grande volume|massivo|lote|mil|1k|1000\+|acima de|>\s*1000)", vol_src
+        )
         is_high = (n is not None and n >= limiar) or bool(kw_high)
 
-        vars_out.update({
-            "volume_num": str(n or ""),
-            "volume_alto": "true" if is_high else "false",
-            "volume_class": "alto" if is_high else "baixo",
-        })
+        vars_out.update(
+            {
+                "volume_num": str(n or ""),
+                "volume_alto": "true" if is_high else "false",
+                "volume_class": "alto" if is_high else "baixo",
+            }
+        )
         next_action = "schedule" if is_high else "buy_credits"
 
     return route, vars_out, next_action
 
+
 # ——————————————————————————————————————————————————
 # RAG (Supabase + OpenAI) — endpoint interno
 # ——————————————————————————————————————————————————
-SUPABASE_URL  = (os.getenv("SUPABASE_URL", "") or "").rstrip("/")
-SUPABASE_KEY  = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+SUPABASE_URL = (os.getenv("SUPABASE_URL", "") or "").rstrip("/")
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
-EMBEDDING_DIM   = int(os.getenv("EMBEDDING_DIM", "1536"))
+EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", "1536"))
 
 HEADERS_JSON = {
     "apikey": SUPABASE_KEY,
@@ -162,21 +187,25 @@ HEADERS_JSON = {
     "Content-Type": "application/json",
 }
 
+
 class RagQuery(BaseModel):
     question: str
     k: int = 5
-    filter_source: Optional[str] = None
+    filter_source: str | None = None
+
 
 class RagHit(BaseModel):
     content: str
-    metadata: Dict[str, Any] = {}
+    metadata: dict[str, Any] = {}
     similarity: float
 
+
 class RagResponse(BaseModel):
-    hits: List[RagHit]
+    hits: list[RagHit]
     context: str
 
-def _embed(q: str) -> List[float]:
+
+def _embed(q: str) -> list[float]:
     if OpenAI is None:
         raise RuntimeError("SDK OpenAI não disponível")
     client = OpenAI(api_key=OPENAI_API_KEY)
@@ -185,10 +214,11 @@ def _embed(q: str) -> List[float]:
         raise RuntimeError(f"Embedding dim {len(vec)} != {EMBEDDING_DIM}")
     return vec
 
+
 def _rpc_match(
-    query_emb: List[float],
+    query_emb: list[float],
     k: int,
-    filter_source: Optional[str],
+    filter_source: str | None,
     session: requests.Session,
 ):
     url = f"{SUPABASE_URL}/rest/v1/rpc/match_aria_chunks"
@@ -202,36 +232,48 @@ def _rpc_match(
         raise RuntimeError(f"RPC match failed: {r.status_code} -> {r.text}")
     return r.json()
 
+
 @app.post("/rag/query", response_model=RagResponse)
 def rag_query(q: RagQuery, session: requests.Session = Depends(get_rag_session)):
     vec = _embed(q.question)
     rows = _rpc_match(vec, q.k, q.filter_source, session)
-    hits = [RagHit(content=r.get("content",""), metadata=r.get("metadata") or {}, similarity=float(r.get("similarity", 0))) for r in rows]
+    hits = [
+        RagHit(
+            content=r.get("content", ""),
+            metadata=r.get("metadata") or {},
+            similarity=float(r.get("similarity", 0)),
+        )
+        for r in rows
+    ]
     context = "\n\n".join(f"[{i+1}] {h.content}" for i, h in enumerate(hits))
     return RagResponse(hits=hits, context=context)
+
 
 # ——————————————————————————————————————————————————
 # Heurística para acionar RAG + cliente interno
 # ——————————————————————————————————————————————————
 KEYWORDS = ("como", "funciona", "preço", "prazo", "o que é", "qual", "como faço")
 
-def want_rag(text: str, v: Dict[str, Any]) -> bool:
+
+def want_rag(text: str, v: dict[str, Any]) -> bool:
     if (v or {}).get("faq_mode") is True:
         return True
     t = (text or "").lower()
     return any(k in t for k in KEYWORDS)
 
-RAG_ENABLE          = os.getenv("RAG_ENABLE", "true").lower() == "true"
-RAG_ENDPOINT        = os.getenv("RAG_ENDPOINT", "http://127.0.0.1:8000/rag/query")
-RAG_DEFAULT_SOURCE  = os.getenv("RAG_DEFAULT_SOURCE", "faq")
+
+RAG_ENABLE = os.getenv("RAG_ENABLE", "true").lower() == "true"
+RAG_ENDPOINT = os.getenv("RAG_ENDPOINT", "http://127.0.0.1:8000/rag/query")
+RAG_DEFAULT_SOURCE = os.getenv("RAG_DEFAULT_SOURCE", "faq")
+
 
 def fetch_rag_context(
     question: str,
     k: int = 5,
-    filter_source: Optional[str] = RAG_DEFAULT_SOURCE,
+    filter_source: str | None = RAG_DEFAULT_SOURCE,
     timeout: int = 12,
-    session: Optional[requests.Session] = None,
-) -> Optional[str]:
+    session: requests.Session | None = None,
+) -> str | None:
     payload = {"question": question, "k": int(k), "filter_source": filter_source}
     start = time.time()
     try:
@@ -255,6 +297,7 @@ def fetch_rag_context(
         log.warning("RAG offline/erro: %s", e)
         return None
 
+
 # ——————————————————————————————————————————————————
 # Endpoint principal
 # ——————————————————————————————————————————————————
@@ -265,13 +308,13 @@ def assist_routing(
     session: requests.Session = Depends(get_rag_session),
 ):
     user_text = (req.input or req.user_text or "").strip()
-    v_in: Dict[str, Any] = dict(req.variables or {})
+    v_in: dict[str, Any] = dict(req.variables or {})
 
     # 1) Regras determinísticas
     route, vars_out, next_action = classify_route(user_text, v_in)
 
     # 2) RAG opcional
-    rag_ctx: Optional[str] = None
+    rag_ctx: str | None = None
     need_rag = RAG_ENABLE and want_rag(user_text, v_in)
     if need_rag:
         rag_ctx = fetch_rag_context(user_text, session=session)
@@ -298,9 +341,17 @@ def assist_routing(
                 "Você é a ARIA. Responda em pt-BR. "
                 "Use APENAS o CONTEXTO quando fornecido; se faltar, diga que não encontrou e ofereça encaminhar ao time."
             )
-            prompt = system_rules + (f"\n\nCONTEXTO:\n{rag_ctx}\n\n" if rag_ctx else "\n\n") + f"PERGUNTA:\n{user_text}"
-            client_assistant.beta.threads.messages.create(thread_id=thread_id, role="user", content=prompt)
-            run = client_assistant.beta.threads.runs.create(thread_id=thread_id, assistant_id=ASSISTANT_ID)
+            prompt = (
+                system_rules
+                + (f"\n\nCONTEXTO:\n{rag_ctx}\n\n" if rag_ctx else "\n\n")
+                + f"PERGUNTA:\n{user_text}"
+            )
+            client_assistant.beta.threads.messages.create(
+                thread_id=thread_id, role="user", content=prompt
+            )
+            run = client_assistant.beta.threads.runs.create(
+                thread_id=thread_id, assistant_id=ASSISTANT_ID
+            )
             wait_run(thread_id, run.id, ASSISTANT_TIMEOUT_SECONDS)
             reply_text = last_assistant_message(thread_id)
         except Exception:
@@ -331,15 +382,18 @@ def assist_routing(
         tags=[],
     )
 
+
 # ——————————————————————————————————————————————————
 # Health
 # ——————————————————————————————————————————————————
 @app.get("/healthz")
 def healthz():
     return {"ok": True}
+
+
 import logging
 import os
-from typing import Mapping, Optional
+from collections.abc import Mapping
 
 from dotenv import load_dotenv
 
@@ -362,14 +416,14 @@ if not logging.getLogger().handlers:
 logger = logging.getLogger(__name__)
 
 
-def get_bearer_from_headers(headers: Mapping[str, str]) -> Optional[str]:
+def get_bearer_from_headers(headers: Mapping[str, str]) -> str | None:
     auth = headers.get("authorization") or headers.get("Authorization")
     if not auth or not auth.lower().startswith("bearer "):
         return None
     return auth.split(" ", 1)[1].strip()
 
 
-def require_bearer(request: "Request") -> None:  # type: ignore[valid-type]
+def require_bearer(request: Request) -> None:  # type: ignore[valid-type]
     """FastAPI dependency to enforce Bearer token, if FastAPI is present.
 
     This is a no-op outside FastAPI contexts.

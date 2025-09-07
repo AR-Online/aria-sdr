@@ -1,3 +1,9 @@
 * text=auto
 *.py text eol=lf
 *.sh text eol=lf
+## Normalize line endings to LF for code/text files
+*.py   text eol=lf
+*.toml text eol=lf
+*.md   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf

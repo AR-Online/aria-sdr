@@ -1,8 +1,7 @@
 import os
-from typing import Any, Dict, List
+from typing import Any
 
 import requests
-
 
 SUPABASE_URL = (os.getenv("SUPABASE_URL") or "").rstrip("/")
 SUPABASE_KEY = (os.getenv("SUPABASE_SERVICE_ROLE_KEY") or "").strip()
@@ -10,7 +9,7 @@ SUPABASE_KEY = (os.getenv("SUPABASE_SERVICE_ROLE_KEY") or "").strip()
 if not SUPABASE_URL or not SUPABASE_KEY:
     raise SystemExit("Defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no ambiente.")
 
-HEADERS_JSON: Dict[str, str] = {
+HEADERS_JSON: dict[str, str] = {
     "apikey": SUPABASE_KEY,
     "Authorization": f"Bearer {SUPABASE_KEY}",
     "Content-Type": "application/json",
@@ -18,7 +17,7 @@ HEADERS_JSON: Dict[str, str] = {
 }
 
 
-def ingest_rows(rows: List[Dict[str, Any]]) -> requests.Response:
+def ingest_rows(rows: list[dict[str, Any]]) -> requests.Response:
     url = f"{SUPABASE_URL}/rest/v1/aria_chunks"
     resp = requests.post(url, headers=HEADERS_JSON, json=rows, timeout=30)
     resp.raise_for_status()

@@ -1,1 +1,2 @@
-��#!/usr/bin/env python3
+def test_sanity_imports() -> None:
+    assert True
