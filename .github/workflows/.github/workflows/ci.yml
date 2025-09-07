@@ -1,0 +1,62 @@
+name: ci
+
+on:
+  push:
+    branches: [ main, "**/*" ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      FASTAPI_BEARER_TOKEN: realizati
+      BASE_URL: http://127.0.0.1:8000
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
+
+      - name: Install deps (runtime + tooling)
+        run: |
+          python -m pip install -U pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install ruff black pyright pytest requests uvicorn
+
+      - name: Ruff (lint)
+        run: ruff check .
+
+      - name: Black (format check)
+        run: black --check .
+
+      - name: Pyright (type check)
+        run: pyright
+
+      - name: Start API (background)
+        run: |
+          python -m uvicorn main:app --host 127.0.0.1 --port 8000 &
+          echo $! > uvicorn.pid
+          sleep 2
+
+      - name: Pytest (subset que não depende de OpenAI/RAG)
+        run: |
+          # executa só testes que não precisam do endpoint /rag/query
+          pytest -q -k "health or assist" || (cat .pytest_cache/* 2>/dev/null || true; exit 1)
+
+      - name: Stop API
+        if: always()
+        run: |
+          if [ -f uvicorn.pid ]; then kill $(cat uvicorn.pid) || true; fi
