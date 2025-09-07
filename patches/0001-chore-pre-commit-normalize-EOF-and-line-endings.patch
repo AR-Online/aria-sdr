@@ -1,0 +1,42 @@
+From 8e87e48c18692cea9ba5dbba1cead411b0b1fb98 Mon Sep 17 00:00:00 2001
+From: Louisa Rached <lou@realizati.com.br>
+Date: Sat, 6 Sep 2025 19:57:49 -0300
+Subject: [PATCH] chore(pre-commit): normalize EOF and line endings
+
+---
+ .vscode/settings.json | Bin 246 -> 247 bytes
+ main.py               |   2 +-
+ pyrightconfig.json    | Bin 244 -> 245 bytes
+ 3 files changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/.vscode/settings.json b/.vscode/settings.json
+index 45a9f15a5731637d6045f597c729b51c8c3fd640..5191862409c1861952026982235ac1d2ea526978 100644
+GIT binary patch
+delta 12
+Scmeyy_?>aWCsr;7AOrv)<O7ue
+
+delta 11
+Scmey)_>FPGCl+1?E(QP{SObj!
+
+diff --git a/main.py b/main.py
+index 99a06cf..27af6fd 100644
+--- a/main.py
++++ b/main.py
+@@ -209,4 +209,4 @@ def assist_routing(req: AssistRequest, _tok: str = Depends(require_auth)):
+
+ @app.get("/healthz")
+ def healthz():
+-    return {"ok": True}
+\ No newline at end of file
++    return {"ok": True}
+diff --git a/pyrightconfig.json b/pyrightconfig.json
+index 275ddd8b1f990d28264bffdc0837cbc2fcf12bdc..c3de74ad92b52500af1f5e99ed62960993d0ed01 100644
+GIT binary patch
+delta 12
+Scmeyu_?2<O2UacyAOrv)ssoPz
+
+delta 11
+Scmey$_=R!82NqriE(QP{Bm;*4
+
+--
+2.50.1.windows.1
