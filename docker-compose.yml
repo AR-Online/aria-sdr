@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  api:
+    build: .
+    image: aria-platform:dev
+    container_name: aria-platform-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Fallback for local dev if not set in .env
+      - FASTAPI_BEARER_TOKEN=${FASTAPI_BEARER_TOKEN:-realizati}
+    volumes:
+      - ./:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    profiles: ["dev"]
+
+  api-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    image: aria-platform:prod
+    container_name: aria-platform-api-prod
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    profiles: ["prod"]
