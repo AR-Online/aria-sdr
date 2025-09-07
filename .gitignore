@@ -91,3 +91,18 @@ htmlcov/
 #
 # 2) Confirmar que o .env está ignorado
 # git check-ignore -v .env
+# Virtual environments
+.venv/
+venv/
+
+# Python caches
+__pycache__/
+.pytest_cache/
+
+# Local environment files
+.env
+.env.*
+
+# Editors/OS
+.vscode/
+.DS_Store

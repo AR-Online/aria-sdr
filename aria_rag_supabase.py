@@ -384,3 +384,47 @@ def main():
 
 if __name__ == "__main__":
     main()
+import logging
+import os
+from typing import Any, Dict, Optional
+
+from dotenv import load_dotenv
+
+# 1) Load environment with override for local dev
+load_dotenv(override=True)
+
+# 2) Minimal, idempotent logging setup
+if not logging.getLogger().handlers:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+logger = logging.getLogger(__name__)
+
+# 3) Timeouts for outbound HTTP calls (seconds)
+DEFAULT_TIMEOUT = float(os.getenv("HTTP_TIMEOUT", "15"))
+
+try:
+    import requests  # type: ignore
+except Exception:  # pragma: no cover
+    requests = None  # type: ignore
+
+
+def http_post_json(url: str, payload: Dict[str, Any], timeout: Optional[float] = None) -> Any:
+    """POST JSON with timeout and basic error handling.
+
+    Returns parsed JSON or raises on errors/timeouts.
+    """
+    if requests is None:
+        raise RuntimeError("'requests' not available; install it or adapt the client")
+    to = timeout if timeout is not None else DEFAULT_TIMEOUT
+    try:
+        resp = requests.post(url, json=payload, timeout=to)
+        resp.raise_for_status()
+        return resp.json()
+    except requests.Timeout as exc:  # type: ignore[attr-defined]
+        logger.error("RAG timeout calling %s: %s", url, exc)
+        raise
+    except requests.RequestException as exc:  # type: ignore[attr-defined]
+        logger.error("RAG request error calling %s: %s", url, exc)
+        raise

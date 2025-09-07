@@ -185,18 +185,27 @@ def _embed(q: str) -> List[float]:
         raise RuntimeError(f"Embedding dim {len(vec)} != {EMBEDDING_DIM}")
     return vec
 
-def _rpc_match(query_emb: List[float], k: int, filter_source: Optional[str]):
+def _rpc_match(
+    query_emb: List[float],
+    k: int,
+    filter_source: Optional[str],
+    session: requests.Session,
+):
     url = f"{SUPABASE_URL}/rest/v1/rpc/match_aria_chunks"
-    payload = {"query_embedding": query_emb, "match_count": int(k), "filter_source": filter_source}
-    r = requests.post(url, headers=HEADERS_JSON, data=json.dumps(payload), timeout=30)
+    payload = {
+        "query_embedding": query_emb,
+        "match_count": int(k),
+        "filter_source": filter_source,
+    }
+    r = session.post(url, headers=HEADERS_JSON, json=payload, timeout=30)
     if r.status_code >= 300:
         raise RuntimeError(f"RPC match failed: {r.status_code} -> {r.text}")
     return r.json()
 
 @app.post("/rag/query", response_model=RagResponse)
-def rag_query(q: RagQuery):
-    vec  = _embed(q.question)
-    rows = _rpc_match(vec, q.k, q.filter_source)
+def rag_query(q: RagQuery, session: requests.Session = Depends(get_rag_session)):
+    vec = _embed(q.question)
+    rows = _rpc_match(vec, q.k, q.filter_source, session)
     hits = [RagHit(content=r.get("content",""), metadata=r.get("metadata") or {}, similarity=float(r.get("similarity", 0))) for r in rows]
     context = "\n\n".join(f"[{i+1}] {h.content}" for i, h in enumerate(hits))
     return RagResponse(hits=hits, context=context)
@@ -216,12 +225,18 @@ RAG_ENABLE          = os.getenv("RAG_ENABLE", "true").lower() == "true"
 RAG_ENDPOINT        = os.getenv("RAG_ENDPOINT", "http://127.0.0.1:8000/rag/query")
 RAG_DEFAULT_SOURCE  = os.getenv("RAG_DEFAULT_SOURCE", "faq")
 
-def fetch_rag_context(question: str, k: int = 5, filter_source: Optional[str] = RAG_DEFAULT_SOURCE, timeout: int = 12) -> Optional[str]:
+def fetch_rag_context(
+    question: str,
+    k: int = 5,
+    filter_source: Optional[str] = RAG_DEFAULT_SOURCE,
+    timeout: int = 12,
+    session: Optional[requests.Session] = None,
+) -> Optional[str]:
     payload = {"question": question, "k": int(k), "filter_source": filter_source}
     start = time.time()
     try:
-        session = get_rag_session()
-        r = session.post(RAG_ENDPOINT, json=payload, timeout=timeout)
+        sess = session or get_rag_session()
+        r = sess.post(RAG_ENDPOINT, json=payload, timeout=timeout)
         r.raise_for_status()
         data = r.json() or {}
         ctx = data.get("context") or None
@@ -244,7 +259,11 @@ def fetch_rag_context(question: str, k: int = 5, filter_source: Optional[str] = 
 # Endpoint principal
 # ——————————————————————————————————————————————————
 @app.post("/assist/routing", response_model=AssistResponse)
-def assist_routing(req: AssistRequest, _tok: str = Depends(require_auth)):
+def assist_routing(
+    req: AssistRequest,
+    _tok: str = Depends(require_auth),
+    session: requests.Session = Depends(get_rag_session),
+):
     user_text = (req.input or req.user_text or "").strip()
     v_in: Dict[str, Any] = dict(req.variables or {})
 
@@ -255,7 +274,7 @@ def assist_routing(req: AssistRequest, _tok: str = Depends(require_auth)):
     rag_ctx: Optional[str] = None
     need_rag = RAG_ENABLE and want_rag(user_text, v_in)
     if need_rag:
-        rag_ctx = fetch_rag_context(user_text)
+        rag_ctx = fetch_rag_context(user_text, session=session)
         if rag_ctx:
             vars_out["need_rag"] = "true"
             vars_out["rag_context"] = rag_ctx
@@ -318,3 +337,48 @@ def assist_routing(req: AssistRequest, _tok: str = Depends(require_auth)):
 @app.get("/healthz")
 def healthz():
     return {"ok": True}
+import logging
+import os
+from typing import Mapping, Optional
+
+from dotenv import load_dotenv
+
+try:
+    from fastapi import HTTPException, Request, status  # type: ignore
+except Exception:  # pragma: no cover
+    Request = None  # type: ignore
+    HTTPException = Exception  # type: ignore
+
+
+# Ensure env is loaded locally and can override process vars in dev
+load_dotenv(override=True)
+
+# Basic logging; no-op if already configured elsewhere
+if not logging.getLogger().handlers:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+logger = logging.getLogger(__name__)
+
+
+def get_bearer_from_headers(headers: Mapping[str, str]) -> Optional[str]:
+    auth = headers.get("authorization") or headers.get("Authorization")
+    if not auth or not auth.lower().startswith("bearer "):
+        return None
+    return auth.split(" ", 1)[1].strip()
+
+
+def require_bearer(request: "Request") -> None:  # type: ignore[valid-type]
+    """FastAPI dependency to enforce Bearer token, if FastAPI is present.
+
+    This is a no-op outside FastAPI contexts.
+    """
+    if Request is None:  # FastAPI not available
+        return
+    token = get_bearer_from_headers(request.headers)  # type: ignore[arg-type]
+    if not token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing bearer token")  # type: ignore[arg-type]
+    expected = os.getenv("BEARER_TOKEN", "realizati")
+    if token != expected:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid bearer token")  # type: ignore[arg-type]

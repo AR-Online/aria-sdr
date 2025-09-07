@@ -1,41 +1,41 @@
-import requests
 import os
+from typing import Any, Dict, List
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+import requests
 
-headers = {
+
+SUPABASE_URL = (os.getenv("SUPABASE_URL") or "").rstrip("/")
+SUPABASE_KEY = (os.getenv("SUPABASE_SERVICE_ROLE_KEY") or "").strip()
+
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise SystemExit("Defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no ambiente.")
+
+HEADERS_JSON: Dict[str, str] = {
     "apikey": SUPABASE_KEY,
-    "Authorization": f"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55d3lrc2xhdGxyaXB4cGllaGZiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzE5NjYyMSwiZXhwIjoyMDcyNzcyNjIxfQ.RCZsK_fizrwb-om-unYFCpsDV0sQ43FXWtAvnyIZlF4",
+    "Authorization": f"Bearer {SUPABASE_KEY}",
     "Content-Type": "application/json",
-    "Prefer": "return=representation"
+    "Prefer": "return=representation",
 }
 
-data = [
-    {
-        "source": "faq",
-        "doc_id": "faq_v1",
-        "chunk_index": 0,
-        "content": "Como funciona a AR Online...",
-        "metadata": {"lang": "pt-BR"},
-        "embedding": [0.0123, -0.0045, 0.2234, ...]  # vetor gerado pelo OpenAI
-    }
-]
 
-resp = requests.post(
-    f"https://nywykslatlripxpiehfb.supabase.co/rest/v1/aria_chunks",
-    headers=headers,
-    json=data
-)
+def ingest_rows(rows: List[Dict[str, Any]]) -> requests.Response:
+    url = f"{SUPABASE_URL}/rest/v1/aria_chunks"
+    resp = requests.post(url, headers=HEADERS_JSON, json=rows, timeout=30)
+    resp.raise_for_status()
+    return resp
 
-print(resp.status_code, resp.json())
 
-from openai import OpenAI
-
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-texto = "Como funciona a AR Online..."
-embedding = client.embeddings.create(
-    model="text-embedding-3-small",
-    input=texto
-).data[0].embedding
+if __name__ == "__main__":
+    # Exemplo mínimo de ingestão: ajuste os dados conforme necessário
+    rows = [
+        {
+            "source": "faq",
+            "doc_id": "faq_v1",
+            "chunk_index": 0,
+            "content": "Como funciona a AR Online...",
+            "metadata": {"lang": "pt-BR"},
+            # 'embedding' deve ser um vetor de floats gerado previamente
+        }
+    ]
+    r = ingest_rows(rows)
+    print(r.status_code, r.json())
