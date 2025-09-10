@@ -1,9 +1,7 @@
 import importlib
 import os
 import re
-from typing import Dict
 
-import pytest
 from fastapi.testclient import TestClient
 
 
@@ -21,7 +19,7 @@ def make_client() -> TestClient:
     return TestClient(main.app)
 
 
-def _auth_headers(extra: Dict[str, str] | None = None) -> Dict[str, str]:
+def _auth_headers(extra: dict[str, str] | None = None) -> dict[str, str]:
     base = {"Authorization": "Bearer realizati"}
     if extra:
         base.update(extra)
