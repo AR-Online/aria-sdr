@@ -7,6 +7,8 @@ import re
 import secrets
 import time
 from typing import Any
+import json
+from datetime import datetime
 
 import requests
 from dotenv import find_dotenv, load_dotenv
@@ -19,7 +21,8 @@ from urllib3.util.retry import Retry
 # ——————————————————————————————————————————————————
 # Boot / Config
 # ——————————————————————————————————————————————————
-load_dotenv(find_dotenv(), override=True)
+# Load .env without overriding existing process env (CI-friendly)
+load_dotenv(find_dotenv(), override=False)
 app = FastAPI(title="ARIA Endpoint")
 
 API_TOKEN = (os.getenv("FASTAPI_BEARER_TOKEN") or "").strip()
@@ -62,6 +65,8 @@ def require_auth(cred: HTTPAuthorizationCredentials = Depends(auth_scheme)) -> s
 class AssistRequest(BaseModel):
     input: str | None = None
     user_text: str | None = None
+    # Compatibility with tests/clients that send {"message": "..."}
+    message: str | None = None
     variables: dict[str, Any] | None = None
     channel: str | None = None
     thread_id: str | None = None
@@ -188,9 +193,13 @@ HEADERS_JSON = {
 }
 
 
-class RagQuery(BaseModel):
-    question: str
-    k: int = 5
+class RagQueryIn(BaseModel):
+    # Accept both "question" and legacy "query"
+    question: str | None = None
+    query: str | None = None
+    # Accept both "k" and legacy "top_k"
+    k: int | None = None
+    top_k: int | None = None
     filter_source: str | None = None
 
 
@@ -234,9 +243,11 @@ def _rpc_match(
 
 
 @app.post("/rag/query", response_model=RagResponse)
-def rag_query(q: RagQuery, session: requests.Session = Depends(get_rag_session)):
-    vec = _embed(q.question)
-    rows = _rpc_match(vec, q.k, q.filter_source, session)
+def rag_query(q: RagQueryIn, session: requests.Session = Depends(get_rag_session)):
+    question = (q.question or q.query or "").strip()
+    k = int(q.k or q.top_k or 5)
+    vec = _embed(question)
+    rows = _rpc_match(vec, k, q.filter_source, session)
     hits = [
         RagHit(
             content=r.get("content", ""),
@@ -304,10 +315,13 @@ def fetch_rag_context(
 @app.post("/assist/routing", response_model=AssistResponse)
 def assist_routing(
     req: AssistRequest,
+    request: Request,
     _tok: str = Depends(require_auth),
     session: requests.Session = Depends(get_rag_session),
 ):
-    user_text = (req.input or req.user_text or "").strip()
+    t0 = time.time()
+    # Accept multiple possible input fields
+    user_text = (req.input or req.user_text or req.message or "").strip()
     v_in: dict[str, Any] = dict(req.variables or {})
 
     # 1) Regras determinísticas
@@ -323,15 +337,19 @@ def assist_routing(
             vars_out["rag_context"] = rag_ctx
 
     # 3) Thread (se usar Assistant)
-    if req.thread_id:
-        thread_id = req.thread_id
-    else:
-        thread_id = f"thread_{secrets.token_hex(8)}"
-        if client_assistant is not None:
-            try:
-                thread_id = client_assistant.beta.threads.create().id
-            except Exception:
-                pass
+    # Precedence: header X-Thread-Id -> payload.thread_id -> fallback
+    x_thread_id = (request.headers.get("x-thread-id") or "").strip()  # type: ignore[attr-defined]
+    app_thread_id = (
+        x_thread_id
+        or (req.thread_id or "").strip()
+        or f"thr_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(2)}"
+    )
+    assistant_thread_id: str | None = None
+    if client_assistant is not None:
+        try:
+            assistant_thread_id = client_assistant.beta.threads.create().id
+        except Exception:
+            assistant_thread_id = None
 
     # 4) Assistant opcional
     reply_text = ""
@@ -346,14 +364,16 @@ def assist_routing(
                 + (f"\n\nCONTEXTO:\n{rag_ctx}\n\n" if rag_ctx else "\n\n")
                 + f"PERGUNTA:\n{user_text}"
             )
+            th_id = assistant_thread_id or client_assistant.beta.threads.create().id
             client_assistant.beta.threads.messages.create(
-                thread_id=thread_id, role="user", content=prompt
+                thread_id=th_id, role="user", content=prompt
             )
             run = client_assistant.beta.threads.runs.create(
-                thread_id=thread_id, assistant_id=ASSISTANT_ID
+                thread_id=th_id, assistant_id=ASSISTANT_ID
             )
-            wait_run(thread_id, run.id, ASSISTANT_TIMEOUT_SECONDS)
-            reply_text = last_assistant_message(thread_id)
+            wait_run(th_id, run.id, ASSISTANT_TIMEOUT_SECONDS)
+            reply_text = last_assistant_message(th_id)
+            assistant_thread_id = th_id
         except Exception:
             reply_text = ""
 
@@ -372,10 +392,45 @@ def assist_routing(
         else:
             reply_text = "Como posso te ajudar hoje?"
 
+    # Expose thread ids in variables and response
+    vars_out["thread_id"] = app_thread_id
+    if assistant_thread_id:
+        vars_out["assistant_thread_id"] = assistant_thread_id
+    # Structured JSON log for routing
+    try:
+        x_trace_id = (
+            (request.headers.get("x-trace-id") or request.headers.get("x-request-id") or "")
+            .strip()
+        )
+        vol = str(
+            vars_out.get("volume_num")
+            or v_in.get("lead_volumetria")
+            or v_in.get("lead_duvida")
+            or ""
+        )
+        fluxo_path = str(v_in.get("fluxo_path") or "").strip()
+        dur_ms = int((time.time() - t0) * 1000)
+        log.info(
+            json.dumps(
+                {
+                    "level": "INFO",
+                    "event": "routing",
+                    "thread_id": app_thread_id,
+                    "trace_id": x_trace_id,
+                    "volume": vol,
+                    "fluxo_path": fluxo_path,
+                    "dur_ms": dur_ms,
+                },
+                ensure_ascii=False,
+            )
+        )
+    except Exception:
+        pass
+
     return AssistResponse(
         reply_text=reply_text,
         route=route,
-        thread_id=thread_id,
+        thread_id=app_thread_id,
         variables=vars_out or None,
         confidence=0.75 if route else None,
         next_action=next_action,
@@ -404,8 +459,8 @@ except Exception:  # pragma: no cover
     HTTPException = Exception  # type: ignore
 
 
-# Ensure env is loaded locally and can override process vars in dev
-load_dotenv(override=True)
+# Ensure .env is loaded, but do not override already-set env vars
+load_dotenv(override=False)
 
 # Basic logging; no-op if already configured elsewhere
 if not logging.getLogger().handlers:
