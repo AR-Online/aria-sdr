@@ -1,4 +1,4 @@
-# main.py
+﻿# main.py
 from __future__ import annotations
 
 import json
@@ -7,27 +7,42 @@ import os
 import re
 import secrets
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 import requests
 from dotenv import find_dotenv, load_dotenv
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import Body, Depends, FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-# ——————————————————————————————————————————————————
+# â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
 # Boot / Config
-# ——————————————————————————————————————————————————
+# â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
 # Load .env without overriding existing process env (CI-friendly)
 load_dotenv(find_dotenv(), override=False)
-app = FastAPI(title="ARIA Endpoint")
+DEBUG = (os.getenv("API_DEBUG", "false") or "").lower() == "true"
+app = FastAPI(title="ARIA Endpoint", debug=DEBUG)
 
 API_TOKEN = (os.getenv("FASTAPI_BEARER_TOKEN") or "").strip()
 auth_scheme = HTTPBearer(auto_error=False)
 log = logging.getLogger(__name__)
+
+
+@app.exception_handler(Exception)
+async def _unhandled_exc_handler(request: Request, exc: Exception):  # type: ignore[valid-type]
+    try:
+        import traceback
+
+        with open("last_error.log", "w", encoding="utf-8") as f:
+            f.write(f"path={request.url.path}\n")
+            traceback.print_exc(file=f)
+    except Exception:
+        pass
+    return JSONResponse(status_code=400, content={"detail": "unexpected_error"})
 
 # Session para RAG com retry/backoff
 _rag_session: requests.Session | None = None
@@ -55,13 +70,13 @@ def require_auth(cred: HTTPAuthorizationCredentials = Depends(auth_scheme)) -> s
         raise HTTPException(401, "Missing Authorization header")
     token = (cred.credentials or "").strip()
     if token != API_TOKEN:
-        raise HTTPException(401, "Token inválido")
+        raise HTTPException(401, "Invalid token")
     return token
 
 
-# ——————————————————————————————————————————————————
-# Models (uma vez só)
-# ——————————————————————————————————————————————————
+# â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
+# Models (uma vez sÃ³)
+# â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
 class AssistRequest(BaseModel):
     input: str | None = None
     user_text: str | None = None
@@ -83,9 +98,9 @@ class AssistResponse(BaseModel):
     tags: list[str] | None = None
 
 
-# ——————————————————————————————————————————————————
-# OpenAI (Assistants) — opcional
-# ——————————————————————————————————————————————————
+# â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
+# OpenAI (Assistants) â€” opcional
+# â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ASSISTANT_ID = os.getenv("ASSISTANT_ID")
 ASSISTANT_TIMEOUT_SECONDS = float(os.getenv("ASSISTANT_TIMEOUT_SECONDS", "12"))
@@ -125,9 +140,9 @@ def last_assistant_message(thread_id: str) -> str:
     return ""
 
 
-# ——————————————————————————————————————————————————
-# Regras de negócio — triagem + volumetria
-# ——————————————————————————————————————————————————
+# â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
+# Regras de negÃ³cio â€” triagem + volumetria
+# â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
 def classify_route(
     user_text: str, v: dict[str, Any]
 ) -> tuple[str | None, dict[str, str], str | None]:
@@ -178,9 +193,9 @@ def classify_route(
     return route, vars_out, next_action
 
 
-# ——————————————————————————————————————————————————
-# RAG (Supabase + OpenAI) — endpoint interno
-# ——————————————————————————————————————————————————
+# â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
+# RAG (Supabase + OpenAI) â€” endpoint interno
+# â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
 SUPABASE_URL = (os.getenv("SUPABASE_URL", "") or "").rstrip("/")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
@@ -216,7 +231,7 @@ class RagResponse(BaseModel):
 
 def _embed(q: str) -> list[float]:
     if OpenAI is None:
-        raise RuntimeError("SDK OpenAI não disponível")
+        raise RuntimeError("SDK OpenAI nÃ£o disponÃ­vel")
     client = OpenAI(api_key=OPENAI_API_KEY)
     vec = client.embeddings.create(model=EMBEDDING_MODEL, input=[q]).data[0].embedding
     if len(vec) != EMBEDDING_DIM:
@@ -260,10 +275,10 @@ def rag_query(q: RagQueryIn, session: requests.Session = Depends(get_rag_session
     return RagResponse(hits=hits, context=context)
 
 
-# ——————————————————————————————————————————————————
-# Heurística para acionar RAG + cliente interno
-# ——————————————————————————————————————————————————
-KEYWORDS = ("como", "funciona", "preço", "prazo", "o que é", "qual", "como faço")
+# â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
+# HeurÃ­stica para acionar RAG + cliente interno
+# â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
+KEYWORDS = ("como", "funciona", "preÃ§o", "prazo", "o que Ã©", "qual", "como faÃ§o")
 
 
 def want_rag(text: str, v: dict[str, Any]) -> bool:
@@ -309,40 +324,63 @@ def fetch_rag_context(
         return None
 
 
-# ——————————————————————————————————————————————————
+# â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
 # Endpoint principal
-# ——————————————————————————————————————————————————
-@app.post("/assist/routing", response_model=AssistResponse)
+# â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
+@app.post("/assist/routing")
 def assist_routing(
-    req: AssistRequest,
     request: Request,
+    payload: dict = Body(default_factory=dict),
     _tok: str = Depends(require_auth),
-    session: requests.Session = Depends(get_rag_session),
 ):
     t0 = time.time()
+    try:
+        with open("assist_debug.log", "a", encoding="utf-8") as _f:
+            _f.write("enter\n")
+    except Exception:
+        pass
     # Accept multiple possible input fields
-    user_text = (req.input or req.user_text or req.message or "").strip()
-    v_in: dict[str, Any] = dict(req.variables or {})
+    user_text = (
+        str(
+            (payload or {}).get("input")
+            or (payload or {}).get("user_text")
+            or (payload or {}).get("message")
+            or ""
+        )
+        .strip()
+    )
+    v_in: dict[str, Any] = dict((payload or {}).get("variables") or {})
 
-    # 1) Regras determinísticas
+    # 1) Regras determinÃ­sticas
     route, vars_out, next_action = classify_route(user_text, v_in)
+    try:
+        with open("assist_debug.log", "a", encoding="utf-8") as _f:
+            _f.write("after_classify\n")
+    except Exception:
+        pass
 
     # 2) RAG opcional
     rag_ctx: str | None = None
     need_rag = RAG_ENABLE and want_rag(user_text, v_in)
     if need_rag:
-        rag_ctx = fetch_rag_context(user_text, session=session)
-        if rag_ctx:
-            vars_out["need_rag"] = "true"
-            vars_out["rag_context"] = rag_ctx
+        rag_ctx = fetch_rag_context(user_text)
+    try:
+        with open("assist_debug.log", "a", encoding="utf-8") as _f:
+            _f.write("after_rag\n")
+    except Exception:
+        pass
+
+    if rag_ctx:
+        vars_out["need_rag"] = "true"
+        vars_out["rag_context"] = rag_ctx
 
     # 3) Thread (se usar Assistant)
     # Precedence: header X-Thread-Id -> payload.thread_id -> fallback
     x_thread_id = (request.headers.get("x-thread-id") or "").strip()  # type: ignore[attr-defined]
     app_thread_id = (
         x_thread_id
-        or (req.thread_id or "").strip()
-        or f"thr_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(2)}"
+        or str((payload or {}).get("thread_id") or "").strip()
+        or f"thr_{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(2)}"
     )
     assistant_thread_id: str | None = None
     if client_assistant is not None:
@@ -356,8 +394,8 @@ def assist_routing(
     if client_assistant is not None and ASSISTANT_ID:
         try:
             system_rules = (
-                "Você é a ARIA. Responda em pt-BR. "
-                "Use APENAS o CONTEXTO quando fornecido; se faltar, diga que não encontrou e ofereça encaminhar ao time."
+                "VocÃª Ã© a ARIA. Responda em pt-BR. "
+                "Use APENAS o CONTEXTO quando fornecido; se faltar, diga que nÃ£o encontrou e ofereÃ§a encaminhar ao time."
             )
             prompt = (
                 system_rules
@@ -376,21 +414,31 @@ def assist_routing(
             assistant_thread_id = th_id
         except Exception:
             reply_text = ""
+    try:
+        with open("assist_debug.log", "a", encoding="utf-8") as _f:
+            _f.write("after_assistant\n")
+    except Exception:
+        pass
 
-    # 5) Fallback determinístico
+    # 5) Fallback determinÃ­stico
     if not reply_text:
         if rag_ctx:
             reply_text = "Encontrei estes trechos relevantes e respondi com base neles."
             route = route or "faq"
         elif route == "recebimento":
             reply_text = (
-                "Entendi que você recebeu uma notificação. A AR Online é o meio de envio; "
-                "o conteúdo deve ser tratado diretamente com o remetente indicado na mensagem."
+                "Entendi que vocÃª recebeu uma notificaÃ§Ã£o. A AR Online Ã© o meio de envio; "
+                "o conteÃºdo deve ser tratado diretamente com o remetente indicado na mensagem."
             )
         elif route == "envio":
             reply_text = "Certo! Informe uma estimativa do volume mensal (ex.: 50, 300, 1500) para sugerir o melhor caminho."
         else:
             reply_text = "Como posso te ajudar hoje?"
+    try:
+        with open("assist_debug.log", "a", encoding="utf-8") as _f:
+            _f.write("after_fallback\n")
+    except Exception:
+        pass
 
     # Expose thread ids in variables and response
     vars_out["thread_id"] = app_thread_id
@@ -426,6 +474,11 @@ def assist_routing(
         )
     except Exception:
         pass
+    try:
+        with open("assist_debug.log", "a", encoding="utf-8") as _f:
+            _f.write("before_return\n")
+    except Exception:
+        pass
 
     return AssistResponse(
         reply_text=reply_text,
@@ -438,12 +491,17 @@ def assist_routing(
     )
 
 
-# ——————————————————————————————————————————————————
+# â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
 # Health
-# ——————————————————————————————————————————————————
+# â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
 @app.get("/healthz")
 def healthz():
     return {"ok": True}
+
+
+@app.get("/auth_debug")
+def auth_debug(_tok: str = Depends(require_auth)):
+    return {"tok": _tok}
 
 
 import logging
