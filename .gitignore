@@ -48,6 +48,8 @@ Thumbs.db
 *.log
 logs/
 uvicorn*.log
+uvicorn.out
+uvicorn.err
 
 # ---- App --------------------------------------------------------------
 audio_files/
