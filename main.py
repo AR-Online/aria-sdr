@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import logging
 import os
 import re
@@ -96,6 +97,12 @@ class AssistResponse(BaseModel):
     confidence: float | None = None
     next_action: str | None = None
     tags: list[str] | None = None
+    # Optional flattened fields for clients
+    volume_class: str | None = None
+    volume_alto: bool | None = None
+    fluxo_path: str | None = None
+    trace_id: str | None = None
+    tokens: dict[str, int] | None = None
 
 
 # â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
@@ -166,7 +173,10 @@ def classify_route(
             route = "envio"
 
     if route == "envio":
-        limiar = int(v.get("VOLUME_ALTO_LIMIAR", 1200))
+        # Deterministic volumetry classification
+        def classificar_volume(qtd: int) -> tuple[str, bool]:
+            return ("alto", True) if qtd >= 1200 else ("baixo", False)
+
         vol_src = str(v.get("lead_volumetria", v.get("lead_duvida", ""))).lower()
 
         n: int | None = None
@@ -179,13 +189,19 @@ def classify_route(
         kw_high = re.search(
             r"(alto volume|grande volume|massivo|lote|mil|1k|1000\+|acima de|>\s*1000)", vol_src
         )
-        is_high = (n is not None and n >= limiar) or bool(kw_high)
+
+        if n is not None:
+            vol_class, is_high = classificar_volume(n)
+        else:
+            is_high = bool(kw_high)
+            vol_class = "alto" if is_high else "baixo"
 
         vars_out.update(
             {
                 "volume_num": str(n or ""),
+                "lead_volumetria": str(n or vol_src or ""),
                 "volume_alto": "true" if is_high else "false",
-                "volume_class": "alto" if is_high else "baixo",
+                "volume_class": vol_class,
             }
         )
         next_action = "schedule" if is_high else "buy_credits"
@@ -377,11 +393,20 @@ def assist_routing(
     # 3) Thread (se usar Assistant)
     # Precedence: header X-Thread-Id -> payload.thread_id -> fallback
     x_thread_id = (request.headers.get("x-thread-id") or "").strip()  # type: ignore[attr-defined]
-    app_thread_id = (
-        x_thread_id
-        or str((payload or {}).get("thread_id") or "").strip()
-        or f"thr_{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(2)}"
-    )
+    body_thread_id = str((payload or {}).get("thread_id") or "").strip()
+
+    def ensure_thread_id(remetente: str, canal: str) -> str:
+        base = f"{canal}:{remetente}".strip().lower()
+        return "thrd_" + hashlib.sha256(base.encode()).hexdigest()[:24]
+
+    app_thread_id = x_thread_id or body_thread_id
+    if not app_thread_id:
+        remetente = str(v_in.get("remetente") or "").strip()
+        canal = str(v_in.get("canal") or "").strip()
+        if remetente and canal:
+            app_thread_id = ensure_thread_id(remetente, canal)
+        else:
+            app_thread_id = f"thr_{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(2)}"
     assistant_thread_id: str | None = None
     if client_assistant is not None:
         try:
@@ -480,6 +505,22 @@ def assist_routing(
     except Exception:
         pass
 
+    # Flattened fields derived from variables/context
+    _vol_class: str | None = None
+    _vol_alto_bool: bool | None = None
+    try:
+        if isinstance(vars_out, dict):
+            _vc = vars_out.get("volume_class")
+            _va = vars_out.get("volume_alto")
+            _vol_class = str(_vc) if _vc is not None else None
+            if isinstance(_va, bool):
+                _vol_alto_bool = _va
+            elif isinstance(_va, str):
+                _vol_alto_bool = _va.strip().lower() == "true"
+    except Exception:
+        _vol_class = _vol_class or None
+        _vol_alto_bool = _vol_alto_bool or None
+
     return AssistResponse(
         reply_text=reply_text,
         route=route,
@@ -488,6 +529,11 @@ def assist_routing(
         confidence=0.75 if route else None,
         next_action=next_action,
         tags=[],
+        volume_class=_vol_class,
+        volume_alto=_vol_alto_bool,
+        fluxo_path=fluxo_path if "fluxo_path" in locals() and fluxo_path else None,
+        trace_id=x_trace_id if "x_trace_id" in locals() and x_trace_id else None,
+        tokens=None,
     )
 
 
