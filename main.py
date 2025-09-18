@@ -1,8 +1,8 @@
 ﻿# main.py
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 import logging
 import os
 import re
@@ -44,6 +44,7 @@ async def _unhandled_exc_handler(request: Request, exc: Exception):  # type: ign
     except Exception:
         pass
     return JSONResponse(status_code=400, content={"detail": "unexpected_error"})
+
 
 # Session para RAG com retry/backoff
 _rag_session: requests.Session | None = None
@@ -356,15 +357,12 @@ def assist_routing(
     except Exception:
         pass
     # Accept multiple possible input fields
-    user_text = (
-        str(
-            (payload or {}).get("input")
-            or (payload or {}).get("user_text")
-            or (payload or {}).get("message")
-            or ""
-        )
-        .strip()
-    )
+    user_text = str(
+        (payload or {}).get("input")
+        or (payload or {}).get("user_text")
+        or (payload or {}).get("message")
+        or ""
+    ).strip()
     v_in: dict[str, Any] = dict((payload or {}).get("variables") or {})
 
     # 1) Regras determinÃ­sticas
@@ -406,7 +404,9 @@ def assist_routing(
         if remetente and canal:
             app_thread_id = ensure_thread_id(remetente, canal)
         else:
-            app_thread_id = f"thr_{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(2)}"
+            app_thread_id = (
+                f"thr_{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(2)}"
+            )
     assistant_thread_id: str | None = None
     if client_assistant is not None:
         try:
@@ -472,9 +472,8 @@ def assist_routing(
     # Structured JSON log for routing
     try:
         x_trace_id = (
-            (request.headers.get("x-trace-id") or request.headers.get("x-request-id") or "")
-            .strip()
-        )
+            request.headers.get("x-trace-id") or request.headers.get("x-request-id") or ""
+        ).strip()
         vol = str(
             vars_out.get("volume_num")
             or v_in.get("lead_volumetria")
@@ -592,6 +591,10 @@ def require_bearer(request: Request) -> None:  # type: ignore[valid-type]
     token = get_bearer_from_headers(request.headers)  # type: ignore[arg-type]
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing bearer token")  # type: ignore[arg-type]
-    expected = os.getenv("BEARER_TOKEN", "realizati")
+    # Prefer FASTAPI_BEARER_TOKEN; allow legacy BEARER_TOKEN as a fallback, but never default to a hardcoded value
+    expected = (os.getenv("FASTAPI_BEARER_TOKEN") or os.getenv("BEARER_TOKEN") or "").strip()
+    if not expected:
+        # Auth is enabled but the server is not configured with a token
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing server token config")  # type: ignore[arg-type]
     if token != expected:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid bearer token")  # type: ignore[arg-type]

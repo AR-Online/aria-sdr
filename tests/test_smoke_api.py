@@ -3,8 +3,8 @@ from typing import Any
 
 import requests
 
-# Base URL for the running API, e.g. http://localhost:8000
-BASE_URL = os.getenv("BASE_URL", "http://localhost:8000").rstrip("/")
+# Base URL for the running API (use 127.0.0.1 for Windows stability)
+BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 TOKEN = os.getenv("BEARER_TOKEN", "realizati")
 
 
