@@ -592,6 +592,14 @@ def require_bearer(request: Request) -> None:  # type: ignore[valid-type]
     token = get_bearer_from_headers(request.headers)  # type: ignore[arg-type]
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing bearer token")  # type: ignore[arg-type]
-    expected = os.getenv("BEARER_TOKEN", "realizati")
+    # Prefer FASTAPI_BEARER_TOKEN; allow legacy BEARER_TOKEN as a fallback, but never default to a hardcoded value
+    expected = (
+        os.getenv("FASTAPI_BEARER_TOKEN")
+        or os.getenv("BEARER_TOKEN")
+        or ""
+    ).strip()
+    if not expected:
+        # Auth is enabled but the server is not configured with a token
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing server token config")  # type: ignore[arg-type]
     if token != expected:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid bearer token")  # type: ignore[arg-type]
