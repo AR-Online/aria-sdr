@@ -227,13 +227,18 @@ def supabase_upsert_chunks(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def supabase_match(
-    query_embedding: list[float], k: int = 5, filter_source: str | None = None
+    query_embedding: list[float],
+    k: int = 5,
+    filter_source: str | None = None,
+    filter_namespace: str | None = None,
 ) -> list[dict[str, Any]]:
-    url = f"{SUPABASE_URL}/rest/v1/rpc/match_aria_chunks"
+    rpc_name = os.getenv("RAG_MATCH_RPC", "match_rag_chunks")
+    url = f"{SUPABASE_URL}/rest/v1/rpc/{rpc_name}"
     payload = {
         "query_embedding": query_embedding,
         "match_count": int(k),
         "filter_source": filter_source,
+        "filter_namespace": filter_namespace,
     }
     r = requests.post(url, headers=HEADERS_JSON, data=json.dumps(payload))
     if r.status_code >= 300:
@@ -336,10 +341,15 @@ def ingest(
 # ---------------------------
 
 
-def query(question: str, k: int = 5, filter_source: str | None = None) -> None:
+def query(
+    question: str,
+    k: int = 5,
+    filter_source: str | None = None,
+    filter_namespace: str | None = None,
+) -> None:
     vectors = embed_texts([question])
     qv = vectors[0]
-    hits = supabase_match(qv, k=k, filter_source=filter_source)
+    hits = supabase_match(qv, k=k, filter_source=filter_source, filter_namespace=filter_namespace)
 
     print("\nTop trechos:")
     for i, h in enumerate(hits, 1):
@@ -381,6 +391,12 @@ def build_parser() -> argparse.ArgumentParser:
     pq.add_argument("--question", type=str, required=True, help="Pergunta do usuário")
     pq.add_argument("--k", type=int, default=5, help="Quantidade de trechos")
     pq.add_argument("--filter-source", type=str, default=None, help="Filtrar por source")
+    pq.add_argument(
+        "--filter-namespace",
+        type=str,
+        default=None,
+        help="Filtrar por namespace",
+    )
 
     return p
 
@@ -398,7 +414,12 @@ def main():
             max_tokens=getattr(args, "max_tokens", 350),
         )
     elif args.cmd == "query":
-        query(question=args.question, k=args.k, filter_source=args.filter_source)
+        query(
+            question=args.question,
+            k=args.k,
+            filter_source=args.filter_source,
+            filter_namespace=getattr(args, "filter_namespace", None),
+        )
     else:  # pragma: no cover
         parser.print_help()
 
