@@ -112,6 +112,7 @@ class AssistResponse(BaseModel):
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ASSISTANT_ID = os.getenv("ASSISTANT_ID")
 ASSISTANT_TIMEOUT_SECONDS = float(os.getenv("ASSISTANT_TIMEOUT_SECONDS", "12"))
+CHAT_MODEL = os.getenv("CHAT_MODEL", "gpt-4o-mini")
 
 try:
     from openai import OpenAI  # type: ignore
@@ -309,6 +310,10 @@ RAG_ENABLE = os.getenv("RAG_ENABLE", "true").lower() == "true"
 RAG_ENDPOINT = os.getenv("RAG_ENDPOINT", "http://127.0.0.1:8000/rag/query")
 RAG_DEFAULT_SOURCE = os.getenv("RAG_DEFAULT_SOURCE", "faq")
 
+# Optional alternative RAG backend: "rpc" (default via HTTP) or "pg" (direct Postgres hybrid)
+RAG_BACKEND = os.getenv("RAG_BACKEND", "rpc").strip().lower()
+DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("PG_DSN")
+
 
 def fetch_rag_context(
     question: str,
@@ -340,6 +345,117 @@ def fetch_rag_context(
         log.warning("RAG offline/erro: %s", e)
         return None
 
+
+def _pg_hybrid_search(question: str, k: int = 12) -> tuple[str | None, list[dict]]:
+    """Optional direct-Postgres hybrid search (FTS + vector) using psycopg.
+
+    Returns a tuple (context_text, refs). If unavailable or errors, returns (None, []).
+    """
+    if not DATABASE_URL:
+        return None, []
+    try:
+        import psycopg  # type: ignore
+    except Exception:
+        log.debug("psycopg not installed; skipping PG hybrid search")
+        return None, []
+
+    # Embedding via OpenAI SDK if available
+    try:
+        if OpenAI is None or not OPENAI_API_KEY:
+            return None, []
+        client = OpenAI(api_key=OPENAI_API_KEY)
+        emb = client.embeddings.create(model=EMBEDDING_MODEL, input=question).data[0].embedding
+    except Exception as e:  # pragma: no cover
+        log.warning("Embedding failed: %s", e)
+        return None, []
+
+    fts_rows: list[tuple] = []
+    vec_rows: list[tuple] = []
+    try:
+        with psycopg.connect(DATABASE_URL) as conn:
+            with conn.cursor() as cur:
+                # FTS on content (Portuguese config); adjust to your schema
+                cur.execute(
+                    """
+                    select id, document_id, heading, content,
+                           0.0 as vscore,
+                           ts_rank(to_tsvector('portuguese', content), websearch_to_tsquery('portuguese', %s)) as ts_score
+                    from rag_chunks
+                    where to_tsvector('portuguese', content) @@ websearch_to_tsquery('portuguese', %s)
+                    order by ts_score desc
+                    limit 50
+                    """,
+                    (question, question),
+                )
+                fts_rows = cur.fetchall() or []
+
+                # Vector similarity (pgvector <=>). Assumes column name 'embedding'
+                cur.execute(
+                    """
+                    select id, document_id, heading, content,
+                           1 - (embedding <=> %s::vector) as vscore,
+                           0.0 as ts_score
+                    from rag_chunks
+                    order by embedding <=> %s::vector
+                    limit 50
+                    """,
+                    (emb, emb),
+                )
+                vec_rows = cur.fetchall() or []
+    except Exception as e:
+        log.warning("PG hybrid query failed: %s", e)
+        return None, []
+
+    # Simple Reciprocal Rank Fusion-like merge
+    def rank_map(rows: list[tuple], key_index: int = 0) -> dict[Any, int]:
+        return {row[key_index]: i for i, row in enumerate(rows)}
+
+    r_fts = rank_map(fts_rows)
+    r_vec = rank_map(vec_rows)
+    combined: dict[Any, dict] = {}
+    for rows in (fts_rows, vec_rows):
+        for row in rows:
+            _id, _doc, heading, content, vscore, ts_score = row
+            if _id not in combined:
+                combined[_id] = {
+                    "heading": heading or "",
+                    "content": content or "",
+                    "vscore": float(vscore or 0.0),
+                    "ts_score": float(ts_score or 0.0),
+                    "source_title": str(_doc or ""),
+                    "uri": None,
+                }
+    # Compute fusion score 1/(k + rank)
+    for _id in combined.keys():
+        rf = r_fts.get(_id, 10_000)
+        rv = r_vec.get(_id, 10_000)
+        combined[_id]["fusion"] = (1.0 / (60 + rf)) + (1.0 / (60 + rv))
+
+    top_ids = sorted(combined.keys(), key=lambda i: combined[i]["fusion"], reverse=True)[: max(1, k)]
+    items = [combined[i] for i in top_ids]
+
+    context_text = ""
+    refs: list[dict] = []
+    for i, c in enumerate(items, 1):
+        context_text += f"[{i}] {c['heading'] or ''}\n{c['content']}\n---\n"
+        refs.append({
+            "i": i,
+            "title": c.get("source_title") or "",
+            "uri": c.get("uri") or "",
+        })
+
+    return context_text or None, refs
+
+
+def fetch_rag_bundle(question: str, k: int = 5) -> tuple[str | None, list[dict]]:
+    """Unified RAG fetch that supports RPC or Postgres backends.
+
+    Returns (context, refs). Refs non-empty only for PG backend.
+    """
+    if RAG_BACKEND == "pg":
+        return _pg_hybrid_search(question, max(1, k))
+    # default: RPC backend
+    return fetch_rag_context(question, k), []
 
 # â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
 # Endpoint principal
@@ -375,9 +491,10 @@ def assist_routing(
 
     # 2) RAG opcional
     rag_ctx: str | None = None
+    rag_refs: list[dict] = []
     need_rag = RAG_ENABLE and want_rag(user_text, v_in)
     if need_rag:
-        rag_ctx = fetch_rag_context(user_text)
+        rag_ctx, rag_refs = fetch_rag_bundle(user_text, k=5)
     try:
         with open("assist_debug.log", "a", encoding="utf-8") as _f:
             _f.write("after_rag\n")
@@ -387,6 +504,8 @@ def assist_routing(
     if rag_ctx:
         vars_out["need_rag"] = "true"
         vars_out["rag_context"] = rag_ctx
+        if rag_refs:
+            vars_out["rag_refs"] = rag_refs
 
     # 3) Thread (se usar Assistant)
     # Precedence: header X-Thread-Id -> payload.thread_id -> fallback
@@ -439,6 +558,27 @@ def assist_routing(
             assistant_thread_id = th_id
         except Exception:
             reply_text = ""
+    # If not using Assistants, attempt Chat Completions with RAG context
+    if not reply_text and rag_ctx and OPENAI_API_KEY:
+        try:
+            client = OpenAI(api_key=OPENAI_API_KEY)
+            system_rules = (
+                "Você é a ARIA, assistente da AR Online. Fale SEMPRE em pt-BR, tom cordial e objetivo. "
+                "Siga LGPD: peça só o mínimo. Use APENAS as fontes fornecidas no CONTEXTO para responder. "
+                "Quando faltar base, diga que vai encaminhar para o time responsável."
+            )
+            messages = [
+                {"role": "system", "content": system_rules},
+                {"role": "user", "content": f"PERGUNTA:\n{user_text}\n\nCONTEXTO:\n{rag_ctx}"},
+            ]
+            resp = client.chat.completions.create(
+                model=CHAT_MODEL,
+                messages=messages,
+                temperature=0.2,
+            )
+            reply_text = (resp.choices[0].message.content or "").strip()
+        except Exception:
+            reply_text = reply_text or ""
     try:
         with open("assist_debug.log", "a", encoding="utf-8") as _f:
             _f.write("after_assistant\n")
@@ -504,6 +644,16 @@ def assist_routing(
     except Exception:
         pass
 
+    # Append Fontes section if we have refs
+    try:
+        if rag_ctx and rag_refs:
+            tops = rag_refs[:5]
+            fontes = "\n".join(f"- {r.get('title','')} ({r.get('uri','')})" for r in tops)
+            if fontes.strip():
+                reply_text = reply_text.rstrip() + "\n\nFontes:\n" + fontes
+    except Exception:
+        pass
+
     # Flattened fields derived from variables/context
     _vol_class: str | None = None
     _vol_alto_bool: bool | None = None
@@ -534,6 +684,16 @@ def assist_routing(
         trace_id=x_trace_id if "x_trace_id" in locals() and x_trace_id else None,
         tokens=None,
     )
+
+
+@app.post("/webhookassistrouting")
+def webhook_assist_routing(
+    request: Request,
+    payload: dict = Body(default_factory=dict),
+    _tok: str = Depends(require_auth),
+):
+    # Simple alias to the main routing endpoint for compatibility
+    return assist_routing(request=request, payload=payload, _tok=_tok)
 
 
 # â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
