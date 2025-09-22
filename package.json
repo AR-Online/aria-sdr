@@ -1,0 +1,6 @@
+{
+  "name": "aria-endpoint-pages",
+  "version": "1.0.0",
+  "description": "ARIA Endpoint - Cloudflare Pages Functions",
+  "private": true
+}
