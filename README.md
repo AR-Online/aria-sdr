@@ -173,10 +173,13 @@ curl -s http://localhost:8000/healthz
 ---
 
 ## 🧭 Endpoints (FastAPI)
-* `GET /health` → status
+* `GET /healthz` → status
 * `POST /assist/routing` → entrada do Agno (roteamento/assinatura)
 * `POST /assist/faq` → consulta Assistants (quando chamado diretamente)
 * `POST /threads/create` → cria/normaliza `thread_id` (se necessário)
+* `GET /cloudflare/metrics` → métricas do Cloudflare
+* `POST /cloudflare/setup` → configura proteção Cloudflare
+* `POST /cloudflare/purge-cache` → limpa cache do Cloudflare
 
 > Obs.: mantenha **idempotência** em `/assist/routing` usando `thread_id` + `nonce`.
 
@@ -215,11 +218,21 @@ curl -X POST \
   "$AGNO_ROUTING_WEBHOOK"
 ```
 
-### 3) FastAPI direto (mock)
+### 4) Cloudflare (métricas e configuração)
 ```bash
-curl -X POST http://localhost:8000/assist/routing \
-  -H "content-type: application/json" -H "x-auth: $AUTH_TOKEN" \
-  -d '{"thread_id":"abc123","user_text":"FAQ: planos"}'
+# Obter métricas do Cloudflare
+curl -X GET http://localhost:8000/cloudflare/metrics \
+  -H "Authorization: Bearer $FASTAPI_BEARER_TOKEN"
+
+# Configurar proteção Cloudflare
+curl -X POST http://localhost:8000/cloudflare/setup \
+  -H "Authorization: Bearer $FASTAPI_BEARER_TOKEN"
+
+# Limpar cache do Cloudflare
+curl -X POST http://localhost:8000/cloudflare/purge-cache \
+  -H "Authorization: Bearer $FASTAPI_BEARER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '["https://api.ar-online.com.br/static/style.css"]'
 ```
 
 ---

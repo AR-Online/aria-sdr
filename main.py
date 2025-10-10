@@ -38,6 +38,12 @@ AGNO_API_BASE_URL = os.getenv("AGNO_API_BASE_URL", "https://agno.ar-infra.com.br
 AGNO_AUTH_TOKEN = os.getenv("AGNO_AUTH_TOKEN", "")
 AGNO_BOT_ID = os.getenv("AGNO_BOT_ID", "")
 
+# Cloudflare configuration
+CLOUDFLARE_API_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN", "")
+MINDCHAT_API_TOKEN = os.getenv("MINDCHAT_API_TOKEN", "")
+MINDCHAT_API_BASE_URL = os.getenv("MINDCHAT_API_BASE_URL", "")
+MINDCHAT_API_DOCS = os.getenv("MINDCHAT_API_DOCS", "")
+
 
 @app.exception_handler(Exception)
 async def _unhandled_exc_handler(request: Request, exc: Exception):  # type: ignore[valid-type]
@@ -545,6 +551,54 @@ def assist_routing(
 # â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
 # Health
 # â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
+@app.get("/cloudflare/metrics")
+def cloudflare_metrics(_tok: str = Depends(require_auth)):
+    """Obtém métricas do Cloudflare para ARIA-SDR"""
+    try:
+        from cloudflare_client import get_cloudflare_metrics
+        return get_cloudflare_metrics()
+    except ImportError:
+        return {"success": False, "error": "Módulo Cloudflare não disponível"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/cloudflare/setup")
+def cloudflare_setup(_tok: str = Depends(require_auth)):
+    """Configura proteção Cloudflare para ARIA-SDR"""
+    try:
+        from cloudflare_client import setup_cloudflare_protection
+        return setup_cloudflare_protection()
+    except ImportError:
+        return {"success": False, "error": "Módulo Cloudflare não disponível"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/cloudflare/purge-cache")
+def cloudflare_purge_cache(
+    urls: list[str] = Body(default_factory=list),
+    _tok: str = Depends(require_auth)
+):
+    """Limpa cache do Cloudflare"""
+    try:
+        from cloudflare_client import CloudflareAPI
+        
+        cf = CloudflareAPI()
+        zone_id = cf.get_zone_id("api.ar-online.com.br")
+        
+        if not zone_id:
+            return {"success": False, "error": "Zone ID não encontrado"}
+        
+        result = cf.purge_cache(zone_id, urls if urls else None)
+        return result
+        
+    except ImportError:
+        return {"success": False, "error": "Módulo Cloudflare não disponível"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 @app.get("/healthz")
 def healthz():
     return {"ok": True}
