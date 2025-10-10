@@ -1,3 +1,46 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aria-sdr"
+version = "1.0.0"
+description = "ARIA-SDR - Agente de Relacionamento Inteligente da AR Online"
+authors = [
+    {name = "AR Online", email = "dev@ar-online.com.br"}
+]
+readme = "README.md"
+license = {text = "Proprietary"}
+requires-python = ">=3.11"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: Other/Proprietary License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "python-dotenv>=1.0.1",
+    "openai>=1.40.0",
+    "requests>=2.32.0",
+    "PyPDF2>=3.0.1",
+    "python-slugify>=8.0.4",
+    "Unidecode>=1.3.7",
+    "tqdm>=4.66.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+
 [tool.black]
 line-length = 100
 target-version = ["py311"]

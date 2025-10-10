@@ -26,11 +26,17 @@ from urllib3.util.retry import Retry
 # Load .env without overriding existing process env (CI-friendly)
 load_dotenv(find_dotenv(), override=False)
 DEBUG = (os.getenv("API_DEBUG", "false") or "").lower() == "true"
-app = FastAPI(title="ARIA Endpoint", debug=DEBUG)
+app = FastAPI(title="ARIA-SDR Endpoint", debug=DEBUG)
 
 API_TOKEN = (os.getenv("FASTAPI_BEARER_TOKEN") or "").strip()
 auth_scheme = HTTPBearer(auto_error=False)
 log = logging.getLogger(__name__)
+
+# Agno configuration
+AGNO_ROUTING_WEBHOOK = os.getenv("AGNO_ROUTING_WEBHOOK", "https://agno.ar-infra.com.br/webhook/assist/routing")
+AGNO_API_BASE_URL = os.getenv("AGNO_API_BASE_URL", "https://agno.ar-infra.com.br/api/v1")
+AGNO_AUTH_TOKEN = os.getenv("AGNO_AUTH_TOKEN", "")
+AGNO_BOT_ID = os.getenv("AGNO_BOT_ID", "")
 
 
 @app.exception_handler(Exception)
