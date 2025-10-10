@@ -112,6 +112,9 @@ python check_env.py
 
 # Testar integração WhatsApp
 python test_whatsapp_integration.py
+
+# Testar integração n8n
+python test_n8n_integration.py
 ```
 
 `.env` (exemplo - **use as mesmas variáveis do projeto original**)
@@ -185,6 +188,8 @@ curl -s http://localhost:8000/healthz
 * `POST /threads/create` → cria/normaliza `thread_id` (se necessário)
 * `POST /whatsapp/webhook` → webhook para mensagens WhatsApp via Mindchat
 * `GET /whatsapp/status` → status da integração WhatsApp
+* `POST /n8n/webhook` → webhook para integração com n8n
+* `GET /n8n/status` → status da integração n8n
 * `GET /cloudflare/metrics` → métricas do Cloudflare
 * `POST /cloudflare/setup` → configura proteção Cloudflare
 * `POST /cloudflare/purge-cache` → limpa cache do Cloudflare
@@ -246,7 +251,28 @@ curl -X POST http://localhost:8000/whatsapp/webhook \
   }'
 ```
 
-### 4) Cloudflare (métricas e configuração)
+### 4) n8n Integration
+```bash
+# Testar status da integração n8n
+curl -X GET http://localhost:8000/n8n/status \
+  -H "Authorization: Bearer $FASTAPI_BEARER_TOKEN"
+
+# Testar webhook n8n (simulação)
+curl -X POST http://localhost:8000/n8n/webhook \
+  -H "Authorization: Bearer $FASTAPI_BEARER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source": "n8n",
+    "message": "Teste de integração n8n",
+    "sender": "n8n_user",
+    "channel": "n8n",
+    "workflow_id": "845ead21-31da-47d2-81fd-a1fe46dc34e8",
+    "execution_id": "test_001",
+    "metadata": {"test": true}
+  }'
+```
+
+### 5) Cloudflare (métricas e configuração)
 ```bash
 # Obter métricas do Cloudflare
 curl -X GET http://localhost:8000/cloudflare/metrics \

@@ -44,6 +44,11 @@ services:
       - WHATSAPP_PHONE=${WHATSAPP_PHONE:-997918658}
       - MINDCHAT_WHATSAPP_ENABLED=${MINDCHAT_WHATSAPP_ENABLED:-true}
       - MINDCHAT_WHATSAPP_WEBHOOK=${MINDCHAT_WHATSAPP_WEBHOOK:-https://api-aronline.mindchatapp.com.br/webhook/whatsapp}
+      # n8n Integration
+      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL:-https://n8n-inovacao.ar-infra.com.br/webhook-test/845ead21-31da-47d2-81fd-a1fe46dc34e8}
+      - N8N_API_BASE_URL=${N8N_API_BASE_URL:-https://n8n-inovacao.ar-infra.com.br}
+      - N8N_WEBHOOK_ENABLED=${N8N_WEBHOOK_ENABLED:-true}
+      - N8N_WORKFLOW_ID=${N8N_WORKFLOW_ID:-845ead21-31da-47d2-81fd-a1fe46dc34e8}
     env_file:
       - .env
     volumes:

@@ -600,6 +600,90 @@ def cloudflare_purge_cache(
 
 
 # â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
+# n8n Integration
+# â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
+
+@app.post("/n8n/webhook")
+def n8n_webhook(
+    request: Request,
+    payload: dict = Body(default_factory=dict),
+    _tok: str = Depends(require_auth)
+):
+    """Webhook para integração com n8n"""
+    
+    try:
+        # Extrair dados do payload n8n
+        n8n_data = {
+            "source": payload.get("source", "n8n"),
+            "message": payload.get("message", ""),
+            "sender": payload.get("sender", ""),
+            "channel": payload.get("channel", "n8n"),
+            "timestamp": payload.get("timestamp", ""),
+            "metadata": payload.get("metadata", {}),
+            "workflow_id": payload.get("workflow_id", ""),
+            "execution_id": payload.get("execution_id", "")
+        }
+        
+        log.info(f"n8n webhook received: {n8n_data}")
+        
+        # Processar com ARIA
+        response = process_n8n_message(n8n_data)
+        
+        # Retornar resposta para n8n
+        return {
+            "status": "processed",
+            "aria_response": response,
+            "execution_id": n8n_data["execution_id"]
+        }
+        
+    except Exception as e:
+        log.error(f"Erro no webhook n8n: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+def process_n8n_message(n8n_data: dict) -> dict:
+    """Processa mensagem do n8n usando lógica da ARIA"""
+    
+    try:
+        # Usar o mesmo endpoint de routing
+        routing_payload = {
+            "channel": n8n_data["channel"],
+            "sender": n8n_data["sender"],
+            "user_text": n8n_data["message"],
+            "thread_id": f"n8n_{n8n_data.get('execution_id', 'unknown')}_{int(time.time())}"
+        }
+        
+        # Chamar endpoint interno
+        from fastapi.testclient import TestClient
+        client = TestClient(app)
+        
+        response = client.post(
+            "/assist/routing",
+            json=routing_payload,
+            headers={"Authorization": f"Bearer {API_TOKEN}"}
+        )
+        
+        return response.json()
+        
+    except Exception as e:
+        log.error(f"Erro ao processar mensagem n8n: {e}")
+        return {"reply_text": "Erro ao processar mensagem via n8n."}
+
+
+@app.get("/n8n/status")
+def n8n_status(_tok: str = Depends(require_auth)):
+    """Status da integração n8n"""
+    
+    return {
+        "status": "active",
+        "webhook_url": "https://n8n-inovacao.ar-infra.com.br/webhook-test/845ead21-31da-47d2-81fd-a1fe46dc34e8",
+        "aria_endpoint": f"{API_HOST}:{API_PORT}/n8n/webhook",
+        "aria_status": "active",
+        "workflow_id": "845ead21-31da-47d2-81fd-a1fe46dc34e8"
+    }
+
+
+# â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
 # WhatsApp Integration via Mindchat
 # â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
 
