@@ -50,7 +50,7 @@ def check_env_vars():
         'CLOUDFLARE_API_TOKEN': 'Token da API Cloudflare',
     }
     
-    print("🔍 Verificando variáveis de ambiente...")
+    print("Verificando variaveis de ambiente...")
     print("=" * 50)
     
     # Verifica variáveis obrigatórias
@@ -58,55 +58,55 @@ def check_env_vars():
     for var, description in required_vars.items():
         value = os.getenv(var)
         if not value:
-            missing_required.append(f"❌ {var}: {description}")
+            missing_required.append(f"ERRO {var}: {description}")
         else:
-            print(f"✅ {var}: {'*' * min(len(value), 20)}...")
+            print(f"OK {var}: {'*' * min(len(value), 20)}...")
     
     # Verifica variáveis opcionais
-    print("\n📋 Variáveis opcionais:")
+    print("\nVariaveis opcionais:")
     for var, default in optional_vars.items():
         value = os.getenv(var, default)
-        print(f"✅ {var}: {value}")
+        print(f"OK {var}: {value}")
     
     # Verifica variáveis do Agno
-    print("\n🤖 Variáveis do Agno:")
+    print("\nVariaveis do Agno:")
     missing_agno = []
     for var, description in agno_vars.items():
         value = os.getenv(var)
         if not value:
-            missing_agno.append(f"❌ {var}: {description}")
+            missing_agno.append(f"ERRO {var}: {description}")
         else:
-            print(f"✅ {var}: {'*' * min(len(value), 20)}...")
+            print(f"OK {var}: {'*' * min(len(value), 20)}...")
     
     # Verifica variáveis do Cloudflare
-    print("\n☁️ Variáveis do Cloudflare:")
+    print("\nVariaveis do Cloudflare:")
     for var, description in cloudflare_vars.items():
         value = os.getenv(var)
         if not value:
-            print(f"❌ {var}: {description}")
+            print(f"ERRO {var}: {description}")
         else:
-            print(f"✅ {var}: {'*' * min(len(value), 20)}...")
+            print(f"OK {var}: {'*' * min(len(value), 20)}...")
     
     # Resultado final
     print("\n" + "=" * 50)
     if missing_required:
-        print("❌ ERRO: Variáveis obrigatórias não configuradas:")
+        print("ERRO: Variaveis obrigatorias nao configuradas:")
         for var in missing_required:
             print(f"   {var}")
         return False
     
     if missing_agno:
-        print("⚠️  AVISO: Variáveis do Agno não configuradas:")
+        print("AVISO: Variaveis do Agno nao configuradas:")
         for var in missing_agno:
             print(f"   {var}")
-        print("\n💡 Para configurar:")
+        print("\nPara configurar:")
         print("   1. Copie config.env.example para .env")
         print("   2. Configure AGNO_AUTH_TOKEN e AGNO_BOT_ID")
         print("   3. Execute este script novamente")
         return False
     
-    print("✅ Todas as variáveis estão configuradas!")
-    print("🚀 Pronto para executar o ARIA-SDR!")
+    print("OK: Todas as variaveis estao configuradas!")
+    print("Pronto para executar o ARIA-SDR!")
     return True
 
 if __name__ == "__main__":
