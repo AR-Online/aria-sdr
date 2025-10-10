@@ -40,12 +40,17 @@ def test_healthz_reachable_with_server() -> None:
 
 def test_ragquery_smoke() -> None:
     """Testa o endpoint RAG usando TestClient"""
-    payload: dict[str, Any] = {"query": "test", "top_k": 1}
-    response = client.post("/rag/query", json=payload)
-    # Aceita diferentes códigos de status dependendo da configuração
-    assert response.status_code in (200, 400, 422, 500)
-    if response.status_code == 200:
-        assert isinstance(response.json(), dict)
+    with patch('main._embed') as mock_embed, \
+         patch('main._rpc_match') as mock_rpc:
+        mock_embed.return_value = [0.1] * 1536  # Mock embedding
+        mock_rpc.return_value = [{"content": "test content", "similarity": 0.9}]
+        
+        payload: dict[str, Any] = {"query": "test", "top_k": 1}
+        response = client.post("/rag/query", json=payload)
+        # Aceita diferentes códigos de status dependendo da configuração
+        assert response.status_code in (200, 400, 422, 500)
+        if response.status_code == 200:
+            assert isinstance(response.json(), dict)
 
 
 def test_assistrouting_smoke() -> None:
