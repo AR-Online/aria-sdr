@@ -106,6 +106,12 @@ flowchart LR
 git clone https://github.com/AR-Online/ARIA-SDR.git
 cd ARIA-SDR
 cp config.env.example .env
+
+# Verificar configuração
+python check_env.py
+
+# Testar integração WhatsApp
+python test_whatsapp_integration.py
 ```
 
 `.env` (exemplo - **use as mesmas variáveis do projeto original**)
@@ -177,6 +183,8 @@ curl -s http://localhost:8000/healthz
 * `POST /assist/routing` → entrada do Agno (roteamento/assinatura)
 * `POST /assist/faq` → consulta Assistants (quando chamado diretamente)
 * `POST /threads/create` → cria/normaliza `thread_id` (se necessário)
+* `POST /whatsapp/webhook` → webhook para mensagens WhatsApp via Mindchat
+* `GET /whatsapp/status` → status da integração WhatsApp
 * `GET /cloudflare/metrics` → métricas do Cloudflare
 * `POST /cloudflare/setup` → configura proteção Cloudflare
 * `POST /cloudflare/purge-cache` → limpa cache do Cloudflare
@@ -216,6 +224,26 @@ curl -X POST \
     "thread_id":"abc123"
   }' \
   "$AGNO_ROUTING_WEBHOOK"
+```
+
+### 3) WhatsApp Integration
+```bash
+# Testar status da integração WhatsApp
+curl -X GET http://localhost:8000/whatsapp/status \
+  -H "Authorization: Bearer $FASTAPI_BEARER_TOKEN"
+
+# Testar webhook WhatsApp (simulação)
+curl -X POST http://localhost:8000/whatsapp/webhook \
+  -H "Authorization: Bearer $FASTAPI_BEARER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": "+5516997918658",
+    "to": "+5516997918658",
+    "message": "Olá ARIA!",
+    "timestamp": "2025-10-10T14:34:00Z",
+    "id": "test_msg_001",
+    "type": "text"
+  }'
 ```
 
 ### 4) Cloudflare (métricas e configuração)
