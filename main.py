@@ -599,6 +599,144 @@ def cloudflare_purge_cache(
         return {"success": False, "error": str(e)}
 
 
+# â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
+# WhatsApp Integration via Mindchat
+# â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
+
+@app.post("/whatsapp/webhook")
+def whatsapp_webhook(
+    request: Request,
+    payload: dict = Body(default_factory=dict),
+    _tok: str = Depends(require_auth)
+):
+    """Webhook para receber mensagens do WhatsApp via Mindchat"""
+    
+    try:
+        # Extrair dados da mensagem
+        message_data = {
+            "from": payload.get("from", ""),
+            "to": payload.get("to", ""),
+            "message": payload.get("message", ""),
+            "timestamp": payload.get("timestamp", ""),
+            "message_id": payload.get("id", ""),
+            "type": payload.get("type", "text")
+        }
+        
+        log.info(f"WhatsApp message received: {message_data}")
+        
+        # Processar com ARIA
+        response = process_aria_message(message_data)
+        
+        # Enviar resposta via Mindchat
+        send_whatsapp_response(response, message_data["from"])
+        
+        return {"status": "processed", "message_id": message_data["message_id"]}
+        
+    except Exception as e:
+        log.error(f"Erro no webhook WhatsApp: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+def process_aria_message(message_data: dict) -> dict:
+    """Processa mensagem usando lógica da ARIA"""
+    
+    try:
+        # Usar o mesmo endpoint de routing
+        routing_payload = {
+            "channel": "whatsapp",
+            "sender": message_data["from"],
+            "user_text": message_data["message"],
+            "thread_id": f"wa_{message_data['from']}_{int(time.time())}"
+        }
+        
+        # Chamar endpoint interno
+        from fastapi.testclient import TestClient
+        client = TestClient(app)
+        
+        response = client.post(
+            "/assist/routing",
+            json=routing_payload,
+            headers={"Authorization": f"Bearer {API_TOKEN}"}
+        )
+        
+        return response.json()
+        
+    except Exception as e:
+        log.error(f"Erro ao processar mensagem ARIA: {e}")
+        return {"reply_text": "Desculpe, ocorreu um erro ao processar sua mensagem."}
+
+
+def send_whatsapp_response(response: dict, to_number: str):
+    """Envia resposta via Mindchat WhatsApp API"""
+    
+    try:
+        mindchat_payload = {
+            "to": to_number,
+            "message": response.get("reply_text", "Desculpe, não entendi sua mensagem."),
+            "type": "text"
+        }
+        
+        headers = {
+            "Authorization": f"Bearer {MINDCHAT_API_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        
+        response = requests.post(
+            f"{MINDCHAT_API_BASE_URL}/api/whatsapp/send",
+            json=mindchat_payload,
+            headers=headers,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            log.info(f"Resposta WhatsApp enviada para {to_number}")
+        else:
+            log.error(f"Erro ao enviar WhatsApp: {response.status_code} - {response.text}")
+            
+    except Exception as e:
+        log.error(f"Erro ao enviar WhatsApp: {e}")
+
+
+@app.get("/whatsapp/status")
+def whatsapp_status(_tok: str = Depends(require_auth)):
+    """Status da integração WhatsApp"""
+    
+    try:
+        # Verificar conexão com Mindchat
+        headers = {
+            "Authorization": f"Bearer {MINDCHAT_API_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        
+        response = requests.get(
+            f"{MINDCHAT_API_BASE_URL}/api/whatsapp/status",
+            headers=headers,
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            mindchat_status = response.json()
+            return {
+                "status": "connected",
+                "mindchat_status": mindchat_status,
+                "aria_status": "active",
+                "webhook_url": f"{API_HOST}:{API_PORT}/whatsapp/webhook"
+            }
+        else:
+            return {
+                "status": "error",
+                "error": f"Mindchat API error: {response.status_code}",
+                "aria_status": "active"
+            }
+            
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "aria_status": "active"
+        }
+
+
 @app.get("/healthz")
 def healthz():
     return {"ok": True}

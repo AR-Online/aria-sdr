@@ -9,7 +9,21 @@
     "api_base_url": "https://agno.ar-infra.com.br/api/v1",
     "auth_token": "${AGNO_AUTH_TOKEN}",
     "features": {
-      "whatsapp": true,
+      "whatsapp": {
+        "enabled": true,
+        "number": "+5516997918658",
+        "country_code": "BR",
+        "area_code": "16",
+        "phone": "997918658",
+        "webhook_url": "https://api.ar-online.com.br/whatsapp/webhook",
+        "mindchat_integration": {
+          "api_token": "${MINDCHAT_API_TOKEN}",
+          "base_url": "${MINDCHAT_API_BASE_URL}",
+          "whatsapp_endpoint": "/api/whatsapp/messages",
+          "send_endpoint": "/api/whatsapp/send",
+          "status_endpoint": "/api/whatsapp/status"
+        }
+      },
       "web_chat": true,
       "voice": false,
       "file_upload": true
