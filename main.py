@@ -8,7 +8,7 @@ import os
 import re
 import secrets
 import time
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import requests
@@ -411,7 +411,7 @@ def assist_routing(
             app_thread_id = ensure_thread_id(remetente, canal)
         else:
             app_thread_id = (
-                f"thr_{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(2)}"
+                f"thr_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(2)}"
             )
     assistant_thread_id: str | None = None
     if client_assistant is not None:

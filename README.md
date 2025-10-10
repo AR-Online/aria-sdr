@@ -96,7 +96,7 @@ flowchart LR
 ## 🚀 Quickstart (Dev)
 
 ### Requisitos
-* Python 3.11+
+* Python 3.10+
 * Docker + Docker Compose (opcional, recomendado)
 * Agno acessível
 * Credenciais OpenAI
