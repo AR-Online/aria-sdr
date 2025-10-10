@@ -20,7 +20,7 @@ O Agno substitui o Typebot e n8n na arquitetura do ARIA-SDR, fornecendo:
 ## Webhook Principal
 
 ```
-https://agno.ar-infra.com.br/webhook/assist/routing
+https://api.ar-online.com.br/webhook/assist/routing
 ```
 
 ## Payload de Entrada

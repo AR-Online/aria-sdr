@@ -356,6 +356,25 @@ def fetch_rag_context(
 # â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
 # Endpoint principal
 # â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
+
+@app.post("/webhook/assist/routing")
+def agno_webhook_routing(
+    request: Request,
+    payload: dict = Body(default_factory=dict),
+    _tok: str = Depends(require_auth),
+):
+    """Webhook do Agno - redireciona para o endpoint principal"""
+    return assist_routing(request, payload, _tok)
+
+
+@app.post("/webhook/assist/routing/debug")
+def agno_webhook_routing_debug(
+    request: Request,
+    payload: dict = Body(default_factory=dict),
+):
+    """Webhook do Agno - versão debug sem autenticação"""
+    log.info(f"Agno webhook debug received: {payload}")
+    return {"status": "received", "payload": payload}
 @app.post("/assist/routing")
 def assist_routing(
     request: Request,

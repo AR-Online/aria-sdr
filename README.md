@@ -12,7 +12,7 @@ A ARIA-SDR é um orquestrador de atendimento multicanal modernizado. A conversa 
 * **OpenAI Assistants** → processamento inteligente, RAG e fallback de FAQs
 * **WhatsApp** → canal de comunicação via Mindchat
 * **Cloudflare** → segurança e performance
-* **Webhook principal Agno:** `https://agno.ar-infra.com.br/webhook/assist/routing`
+* **Webhook principal Agno:** `https://api.ar-online.com.br/webhook/assist/routing`
 ```mermaid
 flowchart LR
   U[Usuário WhatsApp] -->|mensagem| M[Mindchat]

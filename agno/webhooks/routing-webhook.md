@@ -1,7 +1,7 @@
 # Agno Webhook Configuration
 
 ## Webhook Principal
-- **URL**: `https://agno.ar-infra.com.br/webhook/assist/routing`
+- **URL**: `https://api.ar-online.com.br/webhook/assist/routing`
 - **Método**: POST
 - **Autenticação**: Bearer Token
 

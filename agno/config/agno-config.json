@@ -5,7 +5,7 @@
     "description": "Agente de Relacionamento Inteligente da AR Online",
     "language": "pt-BR",
     "timezone": "America/Sao_Paulo",
-    "webhook_url": "https://agno.ar-infra.com.br/webhook/assist/routing",
+    "webhook_url": "https://api.ar-online.com.br/webhook/assist/routing",
     "api_base_url": "https://agno.ar-infra.com.br/api/v1",
     "auth_token": "${AGNO_AUTH_TOKEN}",
     "features": {
