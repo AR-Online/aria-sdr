@@ -105,19 +105,46 @@ flowchart LR
 ```bash
 git clone https://github.com/AR-Online/ARIA-SDR.git
 cd ARIA-SDR
-cp .env.example .env
+cp config.env.example .env
 ```
 
-`.env` (exemplo)
+`.env` (exemplo - **use as mesmas variáveis do projeto original**)
 
 ```
-AUTH_TOKEN=changeme
-OPENAI_API_KEY=sk-...
-OPENAI_ASSISTANT_ID=asst_...
-VOL_THRESHOLD=1200
+# --- FastAPI / Auth ---
+API_HOST=0.0.0.0
+API_PORT=8000
+API_LOG_LEVEL=info
+FASTAPI_BEARER_TOKEN=dtransforma
+BEARER_TOKEN=dtransforma
+
+# --- OpenAI (já configurado) ---
+OPENAI_API_KEY=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
+ASSISTANT_ID=asst_Y9PUGUtEqgQWhg1WSkgPPzt6
+ASSISTANT_TIMEOUT_SECONDS=12
+
+# --- Supabase (já configurado) ---
+SUPABASE_URL=https://hnagqhgfskhmqweeqvts.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhuYWdxaGdmc2tobXF3ZWVxdnRzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NDk2MzYyNywiZXhwIjoyMDcwNTM5NjI3fQ.t_bAT6CwPbDp8BH_3NeFtTRSw1WLhS4jorsyh6-MZiE
+EMBEDDING_MODEL=text-embedding-3-small
+EMBEDDING_DIM=1536
+
+# --- RAG client ---
+RAG_ENABLE=true
+RAG_ENDPOINT=http://127.0.0.1:8000/rag/query
+RAG_DEFAULT_SOURCE=faq
+
+# --- Business rules ---
+VOLUME_ALTO_LIMIAR=1200
+
+# --- Agno Integration (configure apenas estas) ---
 AGNO_ROUTING_WEBHOOK=https://agno.ar-infra.com.br/webhook/assist/routing
-ALLOWED_ORIGINS=*
+AGNO_API_BASE_URL=https://agno.ar-infra.com.br/api/v1
+AGNO_AUTH_TOKEN=seu_token_agno_aqui
+AGNO_BOT_ID=seu_bot_id_aqui
 ```
+
+**💡 Importante:** Todas as variáveis principais (OpenAI, Supabase, etc.) já estão configuradas com os valores que funcionavam no projeto original. Você só precisa configurar `AGNO_AUTH_TOKEN` e `AGNO_BOT_ID`.
 
 ### 2) Rodando com Docker
 ```bash
@@ -126,9 +153,13 @@ docker compose up --build
 docker run -p 8000:8000 --env-file .env ghcr.io/aria/fastapi:latest
 ```
 
-### 3) Healthcheck
+### 3) Verificar Configuração
 ```bash
-curl -s http://localhost:8000/health
+# Verificar se todas as variáveis estão configuradas
+python check_env.py
+
+# Healthcheck
+curl -s http://localhost:8000/healthz
 ```
 
 ---
