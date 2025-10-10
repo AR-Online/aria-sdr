@@ -45,6 +45,11 @@ def check_env_vars():
         'AGNO_BOT_ID': 'ID do bot no Agno',
     }
     
+    # Variáveis do Cloudflare (já configuradas)
+    cloudflare_vars = {
+        'CLOUDFLARE_API_TOKEN': 'Token da API Cloudflare',
+    }
+    
     print("🔍 Verificando variáveis de ambiente...")
     print("=" * 50)
     
@@ -70,6 +75,15 @@ def check_env_vars():
         value = os.getenv(var)
         if not value:
             missing_agno.append(f"❌ {var}: {description}")
+        else:
+            print(f"✅ {var}: {'*' * min(len(value), 20)}...")
+    
+    # Verifica variáveis do Cloudflare
+    print("\n☁️ Variáveis do Cloudflare:")
+    for var, description in cloudflare_vars.items():
+        value = os.getenv(var)
+        if not value:
+            print(f"❌ {var}: {description}")
         else:
             print(f"✅ {var}: {'*' * min(len(value), 20)}...")
     

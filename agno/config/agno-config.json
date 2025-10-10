@@ -50,6 +50,14 @@
       "API_PORT": "${API_PORT}",
       "API_LOG_LEVEL": "${API_LOG_LEVEL}",
       "BEARER_TOKEN": "${BEARER_TOKEN}"
+    },
+    "cloudflare": {
+      "api_token": "${CLOUDFLARE_API_TOKEN}",
+      "features": {
+        "dns": true,
+        "security": true,
+        "analytics": true
+      }
     }
   }
 }

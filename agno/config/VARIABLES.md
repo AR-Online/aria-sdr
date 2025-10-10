@@ -34,6 +34,9 @@
 - `AGNO_AUTH_TOKEN` - Token de autenticação do Agno
 - `AGNO_BOT_ID` - ID do bot no Agno
 
+### Cloudflare (já configurado)
+- `CLOUDFLARE_API_TOKEN` - Token da API Cloudflare ✅ **CONFIGURADO**
+
 ## Como usar
 
 1. **Copie o arquivo de exemplo:**

@@ -142,9 +142,12 @@ AGNO_ROUTING_WEBHOOK=https://agno.ar-infra.com.br/webhook/assist/routing
 AGNO_API_BASE_URL=https://agno.ar-infra.com.br/api/v1
 AGNO_AUTH_TOKEN=seu_token_agno_aqui
 AGNO_BOT_ID=seu_bot_id_aqui
+
+# --- Cloudflare Integration (já configurado) ---
+CLOUDFLARE_API_TOKEN=JV_d0yng1HI5vcxJaebMpiuoC04gRifT3SbBhT7U
 ```
 
-**💡 Importante:** Todas as variáveis principais (OpenAI, Supabase, etc.) já estão configuradas com os valores que funcionavam no projeto original. Você só precisa configurar `AGNO_AUTH_TOKEN` e `AGNO_BOT_ID`.
+**💡 Importante:** Todas as variáveis principais (OpenAI, Supabase, Cloudflare, etc.) já estão configuradas com os valores que funcionavam no projeto original. Você só precisa configurar `AGNO_AUTH_TOKEN` e `AGNO_BOT_ID`.
 
 ### 2) Rodando com Docker
 ```bash
