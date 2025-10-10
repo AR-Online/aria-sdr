@@ -145,9 +145,14 @@ AGNO_BOT_ID=seu_bot_id_aqui
 
 # --- Cloudflare Integration (já configurado) ---
 CLOUDFLARE_API_TOKEN=JV_d0yng1HI5vcxJaebMpiuoC04gRifT3SbBhT7U
+
+# --- Mindchat Integration (já configurado) ---
+MINDCHAT_API_TOKEN=c3e79a1e8503825ba091f5e46adeea724131d37f19cc8190c14ba7d6f5efbc7805125dd0bd5d4806be4caee1efe262d42e8b539fad5691d35872a10e1b84e550acc87c1c782461f452d2f72acdbec7204706a402b5963d74d5f6a9b8ae051ac407216f838780e5f937cf6ba745ea893ee4c52557a924ca451e1134af58
+MINDCHAT_API_BASE_URL=https://api-aronline.mindchatapp.com.br
+MINDCHAT_API_DOCS=https://api-aronline.mindchatapp.com.br/api-docs/
 ```
 
-**💡 Importante:** Todas as variáveis principais (OpenAI, Supabase, Cloudflare, etc.) já estão configuradas com os valores que funcionavam no projeto original. Você só precisa configurar `AGNO_AUTH_TOKEN` e `AGNO_BOT_ID`.
+**💡 Importante:** Todas as variáveis principais (OpenAI, Supabase, Cloudflare, Mindchat, etc.) já estão configuradas com os valores que funcionavam no projeto original. Você só precisa configurar `AGNO_AUTH_TOKEN` e `AGNO_BOT_ID`.
 
 ### 2) Rodando com Docker
 ```bash

@@ -37,6 +37,11 @@
 ### Cloudflare (já configurado)
 - `CLOUDFLARE_API_TOKEN` - Token da API Cloudflare ✅ **CONFIGURADO**
 
+### Mindchat (já configurado)
+- `MINDCHAT_API_TOKEN` - Token da API Mindchat ✅ **CONFIGURADO**
+- `MINDCHAT_API_BASE_URL` - URL base da API Mindchat ✅ **CONFIGURADO**
+- `MINDCHAT_API_DOCS` - Documentação da API Mindchat ✅ **CONFIGURADO**
+
 ## Como usar
 
 1. **Copie o arquivo de exemplo:**

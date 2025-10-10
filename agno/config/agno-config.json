@@ -58,6 +58,23 @@
         "security": true,
         "analytics": true
       }
+    },
+    "mindchat": {
+      "api_token": "${MINDCHAT_API_TOKEN}",
+      "api_base_url": "${MINDCHAT_API_BASE_URL}",
+      "api_docs": "${MINDCHAT_API_DOCS}",
+      "features": {
+        "customer_service": true,
+        "ticket_management": true,
+        "chat_integration": true,
+        "analytics": true
+      },
+      "endpoints": {
+        "tickets": "/api/tickets",
+        "messages": "/api/messages",
+        "customers": "/api/customers",
+        "analytics": "/api/analytics"
+      }
     }
   }
 }

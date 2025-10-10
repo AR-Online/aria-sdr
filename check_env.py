@@ -50,6 +50,13 @@ def check_env_vars():
         'CLOUDFLARE_API_TOKEN': 'Token da API Cloudflare',
     }
     
+    # Variáveis do Mindchat (já configuradas)
+    mindchat_vars = {
+        'MINDCHAT_API_TOKEN': 'Token da API Mindchat',
+        'MINDCHAT_API_BASE_URL': 'URL base da API Mindchat',
+        'MINDCHAT_API_DOCS': 'Documentação da API Mindchat',
+    }
+    
     print("Verificando variaveis de ambiente...")
     print("=" * 50)
     
@@ -81,6 +88,15 @@ def check_env_vars():
     # Verifica variáveis do Cloudflare
     print("\nVariaveis do Cloudflare:")
     for var, description in cloudflare_vars.items():
+        value = os.getenv(var)
+        if not value:
+            print(f"ERRO {var}: {description}")
+        else:
+            print(f"OK {var}: {'*' * min(len(value), 20)}...")
+    
+    # Verifica variáveis do Mindchat
+    print("\nVariaveis do Mindchat:")
+    for var, description in mindchat_vars.items():
         value = os.getenv(var)
         if not value:
             print(f"ERRO {var}: {description}")
