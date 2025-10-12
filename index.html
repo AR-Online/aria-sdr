@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARIA-SDR - AR Online</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 3rem;
+            max-width: 800px;
+            margin: 2rem;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 2.5rem;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            font-size: 1.2rem;
+            margin-bottom: 3rem;
+        }
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+        .feature {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        .feature h3 {
+            color: #333;
+            margin-top: 0;
+        }
+        .status {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            margin: 2rem 0;
+        }
+        .status h3 {
+            color: #2e7d32;
+            margin-top: 0;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 3rem;
+            color: #666;
+            border-top: 1px solid #eee;
+            padding-top: 2rem;
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .logo h2 {
+            color: #667eea;
+            font-size: 1.8rem;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h2>ARIA-SDR</h2>
+        </div>
+        
+        <h1>Agente de Relacionamento Inteligente</h1>
+        <p class="subtitle">AR Online - Solução de Atendimento Multicanal</p>
+        
+        <div class="status">
+            <h3>✅ Sistema Ativo</h3>
+            <p>API funcionando normalmente | Integração WhatsApp ativa | Cloudflare protegido</p>
+        </div>
+        
+        <div class="features">
+            <div class="feature">
+                <h3>🤖 Inteligência Artificial</h3>
+                <p>Integração com OpenAI Assistants para processamento inteligente de mensagens e FAQ automatizado.</p>
+            </div>
+            
+            <div class="feature">
+                <h3>📱 WhatsApp Integration</h3>
+                <p>Conexão direta via Mindchat para atendimento via WhatsApp com roteamento inteligente.</p>
+            </div>
+            
+            <div class="feature">
+                <h3>🔒 Segurança</h3>
+                <p>Proteção Cloudflare, autenticação Bearer Token e conformidade com LGPD.</p>
+            </div>
+            
+            <div class="feature">
+                <h3>⚡ Performance</h3>
+                <p>FastAPI otimizado, cache inteligente e escalabilidade para alto volume.</p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p><strong>AR Online</strong> - Transformando relacionamento com clientes através da tecnologia</p>
+            <p>API Endpoint: <code>https://api.ar-online.com.br</code></p>
+        </div>
+    </div>
+</body>
+</html>

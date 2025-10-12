@@ -12,12 +12,12 @@ from datetime import datetime, timezone
 from typing import Any
 
 import requests  # pyright: ignore[reportMissingModuleSource]
-from dotenv import find_dotenv, load_dotenv
-from fastapi import Body, Depends, FastAPI, HTTPException, Request
+from dotenv import find_dotenv, load_dotenv  # pyright: ignore[reportMissingImports]
+from fastapi import Body, Depends, FastAPI, HTTPException, Request  # pyright: ignore[reportMissingImports]
 from fastapi.responses import JSONResponse  # pyright: ignore[reportMissingImports]
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer  # pyright: ignore[reportMissingImports]
 from pydantic import BaseModel
-from requests.adapters import HTTPAdapter
+from requests.adapters import HTTPAdapter  # pyright: ignore[reportMissingModuleSource]
 from urllib3.util.retry import Retry  # pyright: ignore[reportMissingImports]
 
 # â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
@@ -739,7 +739,7 @@ def whatsapp_status(_tok: str = Depends(require_auth)):
                 "status": "connected",
                 "mindchat_status": mindchat_status,
                 "aria_status": "active",
-                "webhook_url": f"{API_HOST}:{API_PORT}/whatsapp/webhook"
+                "webhook_url": f"{API_HOST}:{API_PORT}/whatsapp/webhook"  # pyright: ignore[reportUndefinedVariable]
             }
         else:
             return {
@@ -770,7 +770,7 @@ import logging
 import os
 from collections.abc import Mapping
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # pyright: ignore[reportMissingImports]
 
 try:
     from fastapi import HTTPException, Request, status  # type: ignore
