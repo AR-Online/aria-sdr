@@ -48,6 +48,13 @@ MINDCHAT_API_DOCS = os.getenv("MINDCHAT_API_DOCS", "")
 GITLAB_WEBHOOK_TOKEN = os.getenv("GITLAB_WEBHOOK_TOKEN", "dtransforma2026")
 WHATSAPP_NUMBER = os.getenv("WHATSAPP_NUMBER", "+5516997918658")
 
+# Mindchat Integration configuration
+MINDCHAT_WEBHOOK_SECRET = os.getenv("MINDCHAT_WEBHOOK_SECRET", "")
+MINDCHAT_VERIFY_TOKEN = os.getenv("MINDCHAT_VERIFY_TOKEN", "aria_verify_token")
+WHATSAPP_ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
+WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
+WHATSAPP_VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "")
+
 
 @app.exception_handler(Exception)
 async def _unhandled_exc_handler(request: Request, exc: Exception):  # type: ignore[valid-type]
@@ -1153,3 +1160,293 @@ async def test_gitlab_webhook(
     
     # Processar como webhook normal
     return await gitlab_webhook_endpoint(None, test_payload, True)
+
+# Mindchat Integration Functions
+import hmac
+import hashlib
+from dataclasses import dataclass
+from typing import Optional, List, Dict, Any
+
+@dataclass
+class WhatsAppMessage:
+    """Representa uma mensagem do WhatsApp"""
+    message_id: str
+    from_number: str
+    timestamp: str
+    text: str
+    message_type: str
+    contact_name: Optional[str] = None
+    context_id: Optional[str] = None
+
+def verify_mindchat_webhook_signature(payload: bytes, signature: str) -> bool:
+    """Verifica a assinatura do webhook do Mindchat"""
+    if not MINDCHAT_WEBHOOK_SECRET:
+        log.warning("Webhook secret não configurado, pulando verificação")
+        return True
+    
+    expected_signature = hmac.new(
+        MINDCHAT_WEBHOOK_SECRET.encode(),
+        payload,
+        hashlib.sha256
+    ).hexdigest()
+    
+    return hmac.compare_digest(f"sha256={expected_signature}", signature)
+
+def parse_whatsapp_message(payload: Dict[str, Any]) -> Optional[WhatsAppMessage]:
+    """Converte payload do Mindchat para objeto WhatsAppMessage"""
+    try:
+        if "messages" not in payload:
+            return None
+        
+        message_data = payload["messages"][0]
+        contact_data = payload.get("contacts", [{}])[0]
+        
+        # Extrair texto da mensagem
+        text = ""
+        message_type = message_data.get("type", "text")
+        
+        if message_type == "text":
+            text = message_data.get("text", {}).get("body", "")
+        elif message_type == "interactive":
+            interactive = message_data.get("interactive", {})
+            if interactive.get("type") == "button_reply":
+                text = interactive.get("button_reply", {}).get("title", "")
+            elif interactive.get("type") == "list_reply":
+                text = interactive.get("list_reply", {}).get("title", "")
+        
+        return WhatsAppMessage(
+            message_id=message_data.get("id", ""),
+            from_number=message_data.get("from", ""),
+            timestamp=message_data.get("timestamp", ""),
+            text=text,
+            message_type=message_type,
+            contact_name=contact_data.get("profile", {}).get("name"),
+            context_id=message_data.get("context", {}).get("id")
+        )
+        
+    except Exception as e:
+        log.error(f"Erro ao processar mensagem WhatsApp: {e}")
+        return None
+
+async def send_mindchat_message(to: str, message: str, message_type: str = "text") -> Dict[str, Any]:
+    """Envia mensagem via API do Mindchat"""
+    try:
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": to,
+            "type": message_type,
+            "text": {"body": message}
+        }
+        
+        headers = {
+            "Authorization": f"Bearer {MINDCHAT_API_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        
+        response = requests.post(
+            f"{MINDCHAT_API_BASE_URL}/messages",
+            json=payload,
+            headers=headers,
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            log.info(f"Mensagem Mindchat enviada para {to}: {message[:50]}...")
+            return {"status": "success", "response": result}
+        else:
+            log.error(f"Erro ao enviar mensagem Mindchat: {response.status_code} - {response.text}")
+            return {"status": "error", "error": response.text}
+            
+    except Exception as e:
+        log.error(f"Exceção ao enviar mensagem Mindchat: {e}")
+        return {"status": "error", "error": str(e)}
+
+async def process_message_with_rag(message: WhatsAppMessage) -> str:
+    """Processa mensagem usando RAG para gerar resposta inteligente"""
+    try:
+        # Chamar API de RAG da ARIA
+        rag_payload = {
+            "query": message.text,
+            "source": "faq",
+            "user_id": message.from_number,
+            "context": {
+                "contact_name": message.contact_name,
+                "message_type": message.message_type,
+                "timestamp": message.timestamp
+            }
+        }
+        
+        response = requests.post(
+            f"{os.getenv('ARIA_API_BASE_URL', 'http://localhost:8000')}/rag/query",
+            json=rag_payload,
+            headers={"Authorization": f"Bearer {API_TOKEN}"},
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            rag_result = response.json()
+            return rag_result.get("answer", "Desculpe, não consegui processar sua mensagem.")
+        else:
+            log.error(f"Erro na API RAG: {response.status_code}")
+            return "Desculpe, estou com dificuldades técnicas. Tente novamente em alguns minutos."
+            
+    except Exception as e:
+        log.error(f"Erro ao processar RAG: {e}")
+        return "Desculpe, ocorreu um erro interno. Tente novamente mais tarde."
+
+async def route_mindchat_message(message: WhatsAppMessage) -> Dict[str, Any]:
+    """Roteia mensagem para o fluxo apropriado"""
+    try:
+        # Chamar API de roteamento da ARIA
+        routing_payload = {
+            "message": message.text,
+            "user_id": message.from_number,
+            "contact_name": message.contact_name,
+            "message_type": message.message_type,
+            "timestamp": message.timestamp
+        }
+        
+        response = requests.post(
+            f"{os.getenv('ARIA_API_BASE_URL', 'http://localhost:8000')}/assist/routing",
+            json=routing_payload,
+            headers={"Authorization": f"Bearer {API_TOKEN}"},
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            routing_result = response.json()
+            return {
+                "status": "success",
+                "routing": routing_result,
+                "action": routing_result.get("action", "chat"),
+                "confidence": routing_result.get("confidence", 0.0)
+            }
+        else:
+            log.error(f"Erro na API de roteamento: {response.status_code}")
+            return {"status": "error", "action": "chat", "confidence": 0.0}
+            
+    except Exception as e:
+        log.error(f"Erro ao rotear mensagem: {e}")
+        return {"status": "error", "action": "chat", "confidence": 0.0}
+
+# Mindchat Webhook Endpoints
+@app.post("/webhook/mindchat/whatsapp")
+async def mindchat_whatsapp_webhook(
+    request: Request,
+    payload: Dict[str, Any] = Body(...),
+    x_mindchat_signature: str = Header(None),
+    x_mindchat_timestamp: str = Header(None)
+) -> JSONResponse:
+    """Endpoint principal para receber webhooks do Mindchat"""
+    
+    # Verificar assinatura
+    body = await request.body()
+    if not verify_mindchat_webhook_signature(body, x_mindchat_signature or ""):
+        raise HTTPException(status_code=401, detail="Invalid signature")
+    
+    log.info(f"Webhook Mindchat recebido: {len(payload.get('messages', []))} mensagens")
+    
+    try:
+        # Processar cada mensagem
+        responses = []
+        
+        for message_data in payload.get("messages", []):
+            # Converter para objeto WhatsAppMessage
+            whatsapp_msg = parse_whatsapp_message({
+                "messages": [message_data],
+                "contacts": payload.get("contacts", [])
+            })
+            
+            if not whatsapp_msg:
+                continue
+            
+            # Roteamento inteligente
+            routing_result = await route_mindchat_message(whatsapp_msg)
+            
+            # Processar baseado no roteamento
+            if routing_result["action"] == "faq":
+                # Usar RAG para responder FAQ
+                response_text = await process_message_with_rag(whatsapp_msg)
+                
+            elif routing_result["action"] == "schedule":
+                # Fluxo de agendamento
+                response_text = "📅 Entendi que você gostaria de agendar algo. Vou te conectar com nossa equipe de agendamentos."
+                
+            elif routing_result["action"] == "buy_credits":
+                # Fluxo de compra de créditos
+                response_text = "💳 Perfeito! Vou te ajudar com a compra de créditos. Deixe-me conectar você com nossa equipe comercial."
+                
+            else:
+                # Chat padrão com RAG
+                response_text = await process_message_with_rag(whatsapp_msg)
+            
+            # Enviar resposta
+            send_result = await send_mindchat_message(
+                whatsapp_msg.from_number,
+                response_text
+            )
+            
+            responses.append({
+                "status": "processed",
+                "message_id": whatsapp_msg.message_id,
+                "response_text": response_text,
+                "routing_action": routing_result["action"],
+                "confidence": routing_result["confidence"],
+                "processed_at": datetime.now().isoformat()
+            })
+        
+        return JSONResponse(content={
+            "status": "success",
+            "processed_messages": len(responses),
+            "responses": responses
+        })
+        
+    except Exception as e:
+        log.error(f"Erro ao processar webhook Mindchat: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+@app.post("/webhook/mindchat/status")
+async def mindchat_status_webhook(
+    payload: Dict[str, Any] = Body(...),
+    x_mindchat_signature: str = Header(None)
+) -> JSONResponse:
+    """Endpoint para receber status de mensagens"""
+    
+    log.info(f"Status webhook Mindchat recebido: {payload}")
+    
+    # Processar status (delivered, read, failed)
+    for status in payload.get("statuses", []):
+        message_id = status.get("id")
+        status_type = status.get("status")
+        timestamp = status.get("timestamp")
+        
+        log.info(f"Mensagem {message_id}: {status_type} em {timestamp}")
+    
+    return JSONResponse(content={"status": "received"})
+
+@app.get("/webhook/mindchat/verify")
+async def verify_mindchat_webhook(
+    hub_mode: str,
+    hub_challenge: str,
+    hub_verify_token: str
+) -> str:
+    """Verificação do webhook (requerido pelo Mindchat)"""
+    
+    if hub_mode == "subscribe" and hub_verify_token == MINDCHAT_VERIFY_TOKEN:
+        log.info("Webhook Mindchat verificado com sucesso")
+        return hub_challenge
+    else:
+        raise HTTPException(status_code=403, detail="Verification failed")
+
+@app.post("/mindchat/send")
+async def send_manual_mindchat_message(
+    to: str,
+    message: str,
+    message_type: str = "text"
+) -> JSONResponse:
+    """Endpoint para envio manual de mensagens"""
+    
+    result = await send_mindchat_message(to, message, message_type)
+    
+    return JSONResponse(content=result)
