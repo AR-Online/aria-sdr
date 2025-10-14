@@ -1,0 +1,61 @@
+{
+  "agents": [
+    {
+      "id": "aria-sdr-agent",
+      "name": "ARIA-SDR",
+      "db_id": "aria-sdr-db",
+      "model": {
+        "name": "OpenAIChat",
+        "model": "gpt-4o-mini",
+        "provider": "OpenAI"
+      },
+      "sessions": {
+        "session_table": "aria_sessions"
+      },
+      "knowledge": {
+        "knowledge_table": "aria_knowledge"
+      },
+      "system_message": {
+        "markdown": true,
+        "add_datetime_to_context": true,
+        "instructions": "Você é a ARIA, Agente de Relacionamento Inteligente da AR Online. Suas responsabilidades: 1. Atender clientes via WhatsApp e chat web 2. Classificar volumetria de envios (alto/baixo volume) 3. Roteamento inteligente para FAQ, agendamento ou loja 4. Responder em português brasileiro de forma cordial e objetiva"
+      },
+      "tools": [
+        "GoogleSearchTools",
+        "WhatsappInterface"
+      ],
+      "memory": {
+        "enable_agentic_memory": true,
+        "add_history_to_context": true,
+        "num_history_runs": 3
+      },
+      "routing": {
+        "volume_threshold": 1200,
+        "high_volume_action": "schedule",
+        "low_volume_action": "buy_credits"
+      }
+    }
+  ],
+  "database": {
+    "type": "sqlite",
+    "file": "tmp/aria_agents.db",
+    "production_type": "postgresql"
+  },
+  "interfaces": [
+    {
+      "type": "whatsapp",
+      "agent_id": "aria-sdr-agent",
+      "config": {
+        "access_token": "${WHATSAPP_ACCESS_TOKEN}",
+        "phone_number_id": "${WHATSAPP_PHONE_NUMBER_ID}",
+        "webhook_url": "${WHATSAPP_WEBHOOK_URL}",
+        "verify_token": "${WHATSAPP_VERIFY_TOKEN}"
+      }
+    }
+  ],
+  "environment": {
+    "app_env": "${APP_ENV}",
+    "debug_mode": false,
+    "production_mode": true
+  }
+}
