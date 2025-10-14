@@ -1,0 +1,7 @@
+INFO:     Started server process [27400]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+2025-09-14 10:18:05,426 INFO httpx: HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-09-14 10:18:09,512 INFO httpx: HTTP Request: POST https://api.openai.com/v1/threads "HTTP/1.1 200 OK"
+2025-09-14 10:18:09,516 INFO main: {"level": "INFO", "event": "routing", "thread_id": "thr_20250914131809_4f5b", "trace_id": "", "volume": "", "fluxo_path": "", "dur_ms": 472}

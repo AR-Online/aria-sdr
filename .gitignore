@@ -1,110 +1,33 @@
-﻿# .gitignore (recomendado)
+﻿# Cloudflare Workers
+.wrangler/
+wrangler.toml
 
-# ---- Python -----------------------------------------------------------
+# Node.js
+node_modules/
+package-lock.json
+
+# Python
 __pycache__/
-*.py[cod]
+*.pyc
 *.pyo
 *.pyd
-*.so
-*.egg
-*.egg-info/
-.eggs/
-.mypy_cache/
-.pytest_cache/
-.coverage
-coverage.xml
-
-# ---- Environments -----------------------------------------------------
-.venv/
-venv/
-ENV/
+.Python
 env/
-# Artefatos Windows que às vezes acabam na raiz por engano
-include/
-Lib/
-Scripts/
-site-packages/
+venv/
+.venv/
 
-# ---- Build/Dist -------------------------------------------------------
-build/
-dist/
-.wheelhouse/
+# Logs
+*.log
+logs/
 
-# ---- Editor / SO ------------------------------------------------------
-.vscode/
-.idea/
-*.code-workspace
+# OS
 .DS_Store
 Thumbs.db
 
-# ---- Config / Secrets -------------------------------------------------
-.env
-.env.*
-.python-version
-
-# ---- DB / Logs locais -------------------------------------------------
-*.db
-*.sqlite3
-*.log
-logs/
-uvicorn*.log
-uvicorn.out
-uvicorn.err
-
-# ---- App --------------------------------------------------------------
-audio_files/
-# (Se precisar de exemplos, use "audio_samples/" com um .gitkeep)
-
-# ---- Node (se houver) -------------------------------------------------
-node_modules/
-.npm/
-
-# ---- Test/Coverage extras --------------------------------------------
-htmlcov/
-.tox/
-.cache/
-
-
-# ----------------------------------------------------------------------
-# .gitattributes (sugestão) — linha por linha
-#   > fixe finais de linha consistentes (Windows/Linux)
-# ----------------------------------------------------------------------
-*.py     text eol=lf
-*.md     text eol=lf
-*.yml    text eol=lf
-*.yaml   text eol=lf
-*.json   text eol=lf
-*.sh     text eol=lf
-*.ps1    text eol=crlf
-*.bat    text eol=crlf
-*        text=auto
-
-
-# ----------------------------------------------------------------------
-# Comandos (referência rápida)
-# ----------------------------------------------------------------------
-# 1) Aplicar .gitignore / .gitattributes
-#    (no terminal do VS Code)
-#
-# git add .gitignore .gitattributes
-# git rm --cached .env           # para de versionar .env, mas mantém no disco
-# git commit -m "chore(repo): update .gitignore + add .gitattributes"
-# git push
-#
-# 2) Confirmar que o .env está ignorado
-# git check-ignore -v .env
-# Virtual environments
-.venv/
-venv/
-
-# Python caches
-__pycache__/
-.pytest_cache/
-
-# Local environment files
-.env
-.env.*
-
-# Editors/OS
+# IDE
 .vscode/
-.DS_Store
+.idea/
+
+# Temporary files
+tmp/
+temp/

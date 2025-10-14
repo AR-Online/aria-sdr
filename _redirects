@@ -1,0 +1,3 @@
+# Redirects para Cloudflare Pages
+/api/assist/routing /api/assist-routing 200
+/api/webhookassistrouting /api/webhookassistrouting 200

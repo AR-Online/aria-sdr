@@ -6,6 +6,7 @@
 ## 🔎 Visão Geral
 A ARIA-SDR é um orquestrador de atendimento multicanal modernizado. A conversa inicia no **Agno** (interface conversacional inteligente), integra diretamente com a **FastAPI** (lógica central/roteamento/assinaturas) e utiliza **OpenAI Assistants** (threads + tools + retrieval) para FAQ/auxílio cognitivo.
 
+<<<<<<< HEAD
 ### Macro-Arquitetura (Agno-Centric)
 * **Agno** → interface conversacional inteligente e orquestração principal
 * **FastAPI** → backend de roteamento, lógica central e segurança
@@ -324,3 +325,11 @@ aria-platform/
 ## 📄 Licença
 
 Proprietário — AR Online. Uso interno.
+=======
+## Arquitetura (resumo)
+
+- Typebot → **n8n** (webhook público, sem segredo)
+- n8n → **FastAPI** (assina a chamada, adiciona AUTH_TOKEN)
+- FastAPI → **OpenAI Assistants** (threads/runs + tool-calls)
+- Regras de negócio: **volumetria** (envio alto/baixo), prompts de **recebimento** e **triagem**
+>>>>>>> origin/feat/thread-id-routing-logs
