@@ -50,7 +50,7 @@ class TestN8nEquivalence:
         # Verificar thread_id format
         assert data["thread_id"].startswith("thr_")
         
-        print(f"✅ Routing basico funcionando: {data['thread_id']}")
+        print(f"Routing basico funcionando: {data['thread_id']}")
     
     def test_volume_classification_preserved(self, client, auth_headers):
         """Testa se classificacao de volume foi preservada"""
@@ -73,7 +73,7 @@ class TestN8nEquivalence:
         response_low = client.post("/assist/routing", json=payload_low, headers=auth_headers)
         assert response_low.status_code == 200
         
-        print("✅ Classificacao de volume preservada")
+        print("Classificacao de volume preservada")
     
     def test_rag_functionality_preserved(self, client):
         """Testa se funcionalidades RAG foram preservadas"""
@@ -91,9 +91,9 @@ class TestN8nEquivalence:
         if response.status_code == 200:
             data = response.json()
             assert "results" in data or "matches" in data
-            print("✅ RAG funcionando")
+            print("RAG funcionando")
         else:
-            print(f"⚠️ RAG com configuracao limitada: {response.status_code}")
+            print(f"RAG com configuracao limitada: {response.status_code}")
     
     def test_whatsapp_webhook_preserved(self, client, auth_headers):
         """Testa se webhook WhatsApp foi preservado"""
@@ -115,9 +115,9 @@ class TestN8nEquivalence:
         if response.status_code == 200:
             data = response.json()
             assert "status" in data
-            print("✅ Webhook WhatsApp funcionando")
+            print("Webhook WhatsApp funcionando")
         else:
-            print(f"⚠️ Webhook WhatsApp com configuracao limitada: {response.status_code}")
+            print(f"Webhook WhatsApp com configuracao limitada: {response.status_code}")
     
     def test_thread_management_improved(self, client, auth_headers):
         """Testa se gerenciamento de thread foi melhorado"""
@@ -140,7 +140,7 @@ class TestN8nEquivalence:
         assert data["thread_id"] == "test_thread_123"
         assert data["variables"]["thread_id"] == "test_thread_123"
         
-        print("✅ Gerenciamento de thread melhorado")
+        print("Gerenciamento de thread melhorado")
     
     def test_error_handling_improved(self, client, auth_headers):
         """Testa se tratamento de erros foi melhorado"""
@@ -152,7 +152,7 @@ class TestN8nEquivalence:
         assert response.status_code in (400, 422)
         
         if response.status_code in (400, 422):
-            print("✅ Tratamento de erros melhorado")
+            print("Tratamento de erros melhorado")
     
     def test_health_check_available(self, client):
         """Testa se health check esta disponivel"""
@@ -163,7 +163,7 @@ class TestN8nEquivalence:
         data = response.json()
         assert data == {"ok": True}
         
-        print("✅ Health check disponivel")
+        print("Health check disponivel")
     
     def test_agno_configuration_status(self):
         """Testa status da configuracao do Agno"""
@@ -172,10 +172,10 @@ class TestN8nEquivalence:
         agno_bot_id = os.getenv("AGNO_BOT_ID", "")
         
         if agno_token and agno_bot_id:
-            print("✅ Configuracao Agno completa")
+            print("Configuracao Agno completa")
             return True
         else:
-            print("⚠️ Configuracao Agno incompleta:")
+            print("Configuracao Agno incompleta:")
             if not agno_token:
                 print("  - AGNO_AUTH_TOKEN nao configurado")
             if not agno_bot_id:
@@ -195,8 +195,8 @@ def run_equivalence_tests():
     agno_bot_id = os.getenv("AGNO_BOT_ID", "")
     
     print(f"\nConfiguracao Agno:")
-    print(f"  AGNO_AUTH_TOKEN: {'✅ Configurado' if agno_token else '❌ Nao configurado'}")
-    print(f"  AGNO_BOT_ID: {'✅ Configurado' if agno_bot_id else '❌ Nao configurado'}")
+    print(f"  AGNO_AUTH_TOKEN: {'Configurado' if agno_token else 'Nao configurado'}")
+    print(f"  AGNO_BOT_ID: {'Configurado' if agno_bot_id else 'Nao configurado'}")
     
     # Executar testes
     print(f"\nExecutando testes de equivalencia...")
