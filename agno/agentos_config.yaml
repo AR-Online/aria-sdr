@@ -1,0 +1,80 @@
+id: aria-sdr-os
+name: ARIA-SDR AgentOS
+description: Sistema de Relacionamento Inteligente da AR Online
+version: 1.0.0
+
+# Configuração dos Agentes
+agents:
+  - id: aria-sdr-agent
+    name: ARIA-SDR
+    description: Agente principal para atendimento WhatsApp e chat web
+    model:
+      provider: openai
+      id: gpt-4o-mini
+    tools:
+      - GoogleSearchTools
+    memory:
+      enable_agentic_memory: true
+      add_history_to_context: true
+      num_history_runs: 3
+    system_message:
+      markdown: true
+      add_datetime_to_context: true
+      instructions: |
+        Você é a ARIA, Agente de Relacionamento Inteligente da AR Online.
+        
+        Suas responsabilidades:
+        1. Atender clientes via WhatsApp e chat web
+        2. Classificar volumetria de envios (alto/baixo volume)
+        3. Roteamento inteligente para FAQ, agendamento ou loja
+        4. Responder em português brasileiro de forma cordial e objetiva
+        
+        Regras de negócio:
+        - Volume alto: >= 1200 mensagens/mês → Agendamento
+        - Volume baixo: < 1200 mensagens/mês → Loja
+        - Use contexto fornecido quando disponível
+        - Se não souber algo, ofereça encaminhar ao time
+        
+        Sempre seja cordial, objetivo e profissional.
+
+# Configuração das Interfaces
+interfaces:
+  - type: whatsapp
+    agent_id: aria-sdr-agent
+    config:
+      access_token: ${WHATSAPP_ACCESS_TOKEN}
+      phone_number_id: ${WHATSAPP_PHONE_NUMBER_ID}
+      webhook_url: ${WHATSAPP_WEBHOOK_URL}
+      verify_token: ${WHATSAPP_VERIFY_TOKEN}
+
+# Configuração do Banco de Dados
+database:
+  development:
+    type: sqlite
+    file: tmp/aria_agents.db
+  production:
+    type: postgresql
+    url: ${DATABASE_URL}
+
+# Configurações do Sistema
+settings:
+  telemetry: true
+  debug_mode: ${APP_ENV == "development"}
+  enable_mcp_server: false
+  on_route_conflict: preserve_agentos
+
+# Configurações de Roteamento
+routing:
+  volume_threshold: 1200
+  high_volume_action: schedule
+  low_volume_action: buy_credits
+  fallback_action: faq
+
+# Configurações de Memória
+memory:
+  capture_instructions: |
+    Collect User's name,
+    Collect Information about user's passion and hobbies,
+    Collect Information about the users likes and dislikes,
+    Collect information about what the user is doing with their life right now,
+    Collect information about their business needs and volume requirements
