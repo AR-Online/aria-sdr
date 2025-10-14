@@ -1,0 +1,146 @@
+# Template de Pipeline Reutilizável para ARIA-SDR
+# Este template pode ser incluído em outros projetos usando inputs
+
+spec:
+  inputs:
+    project_name:
+      description: "Nome do projeto para usar nos jobs"
+      type: string
+      default: "aria-sdr"
+    
+    python_version:
+      description: "Versão do Python para usar nos jobs"
+      type: string
+      default: "3.11"
+      options: ["3.10", "3.11", "3.12"]
+    
+    test_command:
+      description: "Comando personalizado para executar testes"
+      type: string
+      default: "pytest tests/ -v"
+    
+    build_command:
+      description: "Comando personalizado para build"
+      type: string
+      default: "python -c 'import main; print(\"Build OK\")'"
+    
+    deploy_url:
+      description: "URL de deploy do projeto"
+      type: string
+      default: "https://api.ar-online.com.br"
+    
+    enable_security:
+      description: "Habilitar análise de segurança"
+      type: boolean
+      default: true
+    
+    enable_docs:
+      description: "Habilitar verificação de documentação"
+      type: boolean
+      default: true
+---
+
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  PROJECT_NAME: $[[ inputs.project_name ]]
+  PYTHON_VERSION: $[[ inputs.python_version ]]
+
+# Cache para dependências Python
+cache:
+  paths:
+    - .cache/pip/
+    - venv/
+  policy: pull-push
+
+# Job de teste reutilizável
+"$[[ inputs.project_name ]]-test":
+  stage: test
+  image: python:$[[ inputs.python_version ]]-slim
+  before_script:
+    - python -m venv venv
+    - source venv/bin/activate
+    - python -m pip install --upgrade pip
+    - pip install -r requirements.txt
+    - pip install -r requirements-dev.txt
+  script:
+    - echo "Executando testes para $[[ inputs.project_name ]]..."
+    - ruff check . --output-format=github
+    - ruff format --check .
+    - $[[ inputs.test_command ]]
+  artifacts:
+    reports:
+      junit: test-results.xml
+    paths:
+      - test-results/
+    expire_in: 1 week
+
+# Job de build reutilizável
+"$[[ inputs.project_name ]]-build":
+  stage: build
+  image: python:$[[ inputs.python_version ]]-slim
+  before_script:
+    - python -m venv venv
+    - source venv/bin/activate
+    - python -m pip install --upgrade pip
+    - pip install -r requirements.txt
+  script:
+    - echo "Buildando $[[ inputs.project_name ]]..."
+    - $[[ inputs.build_command ]]
+  artifacts:
+    paths:
+      - venv/
+    expire_in: 1 hour
+
+# Job de deploy reutilizável
+"$[[ inputs.project_name ]]-deploy":
+  stage: deploy
+  image: python:$[[ inputs.python_version ]]-slim
+  environment:
+    name: production
+    url: $[[ inputs.deploy_url ]]
+  script:
+    - echo "Deploy de $[[ inputs.project_name ]] para $[[ inputs.deploy_url ]]"
+  when: manual
+
+# Job de segurança condicional
+"$[[ inputs.project_name ]]-security":
+  stage: test
+  image: python:$[[ inputs.python_version ]]-slim
+  before_script:
+    - python -m venv venv
+    - source venv/bin/activate
+    - pip install safety bandit
+  script:
+    - echo "Análise de segurança para $[[ inputs.project_name ]]..."
+    - safety check -r requirements.txt
+    - bandit -r . -f json -o security-report.json || true
+  artifacts:
+    reports:
+      codequality: security-report.json
+    expire_in: 1 week
+  rules:
+    - if: $[[ inputs.enable_security == true ]]
+      when: always
+    - if: $[[ inputs.enable_security == false ]]
+      when: never
+
+# Job de documentação condicional
+"$[[ inputs.project_name ]]-docs":
+  stage: test
+  image: python:$[[ inputs.python_version ]]-slim
+  script:
+    - echo "Verificando documentação de $[[ inputs.project_name ]]..."
+    - python -c "import os; print('Documentação OK' if os.path.exists('README.md') else 'README.md não encontrado')"
+  artifacts:
+    paths:
+      - docs/
+    expire_in: 1 week
+  rules:
+    - if: $[[ inputs.enable_docs == true ]]
+      when: always
+    - if: $[[ inputs.enable_docs == false ]]
+      when: never

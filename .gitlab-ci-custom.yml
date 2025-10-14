@@ -1,0 +1,33 @@
+# Exemplo de uso do template com inputs personalizados
+# Este arquivo mostra como incluir o template com diferentes configurações
+
+include:
+  - local: '.gitlab-ci-template.yml'
+    inputs:
+      project_name: 'aria-sdr-custom'
+      python_version: '3.12'
+      test_command: 'pytest tests/ -v --cov=main --cov-report=xml'
+      build_command: 'python -m build && python -c "import main; print(\"Custom build OK\")"'
+      deploy_url: 'https://custom.aria-sdr.com'
+      enable_security: true
+      enable_docs: true
+
+# Jobs adicionais específicos do projeto
+custom-integration-test:
+  stage: test
+  image: python:3.12-slim
+  script:
+    - echo "Teste de integração personalizado..."
+    - python test_whatsapp_integration.py
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+custom-performance-test:
+  stage: test
+  image: python:3.12-slim
+  script:
+    - echo "Teste de performance personalizado..."
+    - python -c "import time; time.sleep(5); print('Performance test OK')"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  when: manual
