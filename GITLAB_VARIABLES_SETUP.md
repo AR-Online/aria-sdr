@@ -1,39 +1,39 @@
-# Configuração GitLab CI/CD - Variáveis de Ambiente ARIA-SDR
+# Configuracao GitLab CI/CD - Variaveis de Ambiente ARIA-SDR
 
-## Variáveis Críticas que Precisam ser Configuradas no GitLab
+## Variaveis Criticas que Precisam ser Configuradas no GitLab
 
-### 1. Variáveis do Agno (BLOQUEADORES)
+### 1. Variaveis do Agno (BLOQUEADORES)
 ```bash
-# Estas variáveis são OBRIGATÓRIAS para o funcionamento do sistema Agno
+# Estas variaveis sao OBRIGATORIAS para o funcionamento do sistema Agno
 AGNO_AUTH_TOKEN=seu_token_agno_aqui
 AGNO_BOT_ID=seu_bot_id_agno_aqui
 ```
 
 ### 2. Como Configurar no GitLab
 
-#### Opção 1: Via Interface Web
+#### Opcao 1: Via Interface Web
 1. Acesse: https://gitlab.com/lourealiza/aria-sdr/-/settings/ci_cd
-2. Expanda a seção "Variables"
-3. Adicione as seguintes variáveis:
+2. Expanda a secao "Variables"
+3. Adicione as seguintes variaveis:
 
 | Key | Value | Type | Environment | Protected | Masked |
 |-----|-------|------|-------------|-----------|--------|
 | `AGNO_AUTH_TOKEN` | `seu_token_real_aqui` | Variable | All | ✅ | ✅ |
 | `AGNO_BOT_ID` | `seu_bot_id_real_aqui` | Variable | All | ✅ | ❌ |
 
-#### Opção 2: Via GitLab CLI
+#### Opcao 2: Via GitLab CLI
 ```bash
 # Instalar GitLab CLI
 glab auth login
 
-# Configurar variáveis
+# Configurar variaveis
 glab variable set AGNO_AUTH_TOKEN "seu_token_real_aqui" --masked
 glab variable set AGNO_BOT_ID "seu_bot_id_real_aqui" --protected
 ```
 
-### 3. Variáveis Já Configuradas (Não Precisam Alteração)
+### 3. Variaveis Ja Configuradas (Nao Precisam Alteracao)
 
-Estas variáveis já estão funcionando e não precisam ser alteradas:
+Estas variaveis ja estao funcionando e nao precisam ser alteradas:
 
 ```bash
 # FastAPI
@@ -56,15 +56,15 @@ MINDCHAT_API_TOKEN=c3e79a1e8503825ba091f5e46adeea724131d37f19cc8190c14ba7d6f5efb
 MINDCHAT_API_BASE_URL=https://api-aronline.mindchatapp.com.br
 ```
 
-### 4. Teste da Configuração
+### 4. Teste da Configuracao
 
-Após configurar as variáveis, teste com:
+Apos configurar as variaveis, teste com:
 
 ```bash
 # Teste local
 curl -X GET http://localhost:8000/healthz
 
-# Teste de autenticação
+# Teste de autenticacao
 curl -X POST http://localhost:8000/assist/routing \
   -H "Authorization: Bearer $FASTAPI_BEARER_TOKEN" \
   -H "Content-Type: application/json" \
@@ -73,16 +73,16 @@ curl -X POST http://localhost:8000/assist/routing \
 
 ### 5. Pipeline GitLab CI/CD
 
-O arquivo `.gitlab-ci.yml` já está configurado para usar essas variáveis:
+O arquivo `.gitlab-ci.yml` ja esta configurado para usar essas variaveis:
 
 ```yaml
 variables:
   AGNO_AUTH_TOKEN: $AGNO_AUTH_TOKEN
   AGNO_BOT_ID: $AGNO_BOT_ID
-  # ... outras variáveis
+  # ... outras variaveis
 ```
 
-### 6. Próximos Passos
+### 6. Proximos Passos
 
 1. ✅ Configurar `AGNO_AUTH_TOKEN` e `AGNO_BOT_ID` no GitLab
 2. ✅ Testar pipeline CI/CD
@@ -92,16 +92,16 @@ variables:
 ### 7. Troubleshooting
 
 #### Problema: "AGNO_AUTH_TOKEN not found"
-- Verificar se a variável está configurada no GitLab
-- Verificar se está marcada como "Protected" e "Masked"
-- Verificar se o valor não está vazio
+- Verificar se a variavel esta configurada no GitLab
+- Verificar se esta marcada como "Protected" e "Masked"
+- Verificar se o valor nao esta vazio
 
 #### Problema: "AGNO_BOT_ID not found"
-- Verificar se a variável está configurada no GitLab
-- Verificar se está marcada como "Protected"
-- Verificar se o valor não está vazio
+- Verificar se a variavel esta configurada no GitLab
+- Verificar se esta marcada como "Protected"
+- Verificar se o valor nao esta vazio
 
 #### Problema: Pipeline falha
 - Verificar logs do pipeline
-- Verificar se todas as variáveis estão configuradas
-- Verificar conectividade com serviços externos
+- Verificar se todas as variaveis estao configuradas
+- Verificar conectividade com servicos externos

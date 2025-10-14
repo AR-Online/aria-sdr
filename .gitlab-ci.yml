@@ -1,5 +1,5 @@
 # GitLab CI/CD Pipeline para ARIA-SDR
-# Este arquivo configura pipelines automáticos no GitLab
+# Este arquivo configura pipelines automaticos no GitLab
 
 stages:
   - test
@@ -7,14 +7,14 @@ stages:
   - deploy
 
 variables:
-  # Configurações do Python
+  # Configuracoes do Python
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   PIP_DEFAULT_TIMEOUT: 60
   
-  # Configurações de teste
+  # Configuracoes de teste
   PYTHON_VERSION: "3.11"
 
-# Cache para dependências Python
+# Cache para dependencias Python
 cache:
   paths:
     - .cache/pip/
@@ -36,7 +36,7 @@ test:
     - ruff format --check .
     - pytest tests/ -v --tb=short
   variables:
-    # Variáveis de ambiente para testes
+    # Variaveis de ambiente para testes
     FASTAPI_BEARER_TOKEN: "test-token"
     OPENAI_API_KEY: "test-key"
     ASSISTANT_ID: "test-assistant"
@@ -57,7 +57,7 @@ test:
     - develop
     - merge_requests
 
-# Job de build para diferentes versões do Python
+# Job de build para diferentes versoes do Python
 build:
   stage: build
   image: python:${PYTHON_VERSION}-slim
@@ -92,12 +92,12 @@ deploy_staging:
   before_script:
     - echo "Preparando deploy para staging..."
   script:
-    - echo "Deploy para staging concluído"
+    - echo "Deploy para staging concluido"
   only:
     - develop
   when: manual
 
-# Job de deploy para produção
+# Job de deploy para producao
 deploy_production:
   stage: deploy
   image: python:${PYTHON_VERSION}-slim
@@ -105,15 +105,15 @@ deploy_production:
     name: production
     url: https://api.ar-online.com.br
   before_script:
-    - echo "Preparando deploy para produção..."
+    - echo "Preparando deploy para producao..."
   script:
-    - echo "Deploy para produção concluído"
+    - echo "Deploy para producao concluido"
   only:
     - main
     - tags
   when: manual
 
-# Job de segurança e análise de código
+# Job de seguranca e analise de codigo
 security_scan:
   stage: test
   image: python:${PYTHON_VERSION}-slim
@@ -122,7 +122,7 @@ security_scan:
     - source venv/bin/activate
     - pip install safety bandit
   script:
-    - echo "Executando análise de segurança..."
+    - echo "Executando analise de seguranca..."
     - safety check -r requirements.txt
     - bandit -r . -f json -o security-report.json || true
   artifacts:
@@ -134,13 +134,13 @@ security_scan:
     - develop
     - merge_requests
 
-# Job de documentação
+# Job de documentacao
 docs:
   stage: test
   image: python:${PYTHON_VERSION}-slim
   script:
-    - echo "Verificando documentação..."
-    - python -c "import os; print('Documentação OK' if os.path.exists('README.md') else 'README.md não encontrado')"
+    - echo "Verificando documentacao..."
+    - python -c "import os; print('Documentacao OK' if os.path.exists('README.md') else 'README.md nao encontrado')"
   artifacts:
     paths:
       - docs/
