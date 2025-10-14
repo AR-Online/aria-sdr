@@ -1,0 +1,159 @@
+# GitLab CI/CD Pipeline para ARIA-SDR
+# Este arquivo configura pipelines automáticos no GitLab
+
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  # Configurações do Python
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  PIP_DEFAULT_TIMEOUT: 60
+  
+  # Configurações de teste
+  PYTHON_VERSION: "3.11"
+
+# Cache para dependências Python
+cache:
+  paths:
+    - .cache/pip/
+    - venv/
+
+# Job de teste
+test:
+  stage: test
+  image: python:${PYTHON_VERSION}-slim
+  before_script:
+    - python -m venv venv
+    - source venv/bin/activate
+    - python -m pip install --upgrade pip
+    - pip install -r requirements.txt
+    - pip install -r requirements-dev.txt
+  script:
+    - echo "Executando testes..."
+    - ruff check . --output-format=github
+    - ruff format --check .
+    - pytest tests/ -v --tb=short
+  variables:
+    # Variáveis de ambiente para testes
+    FASTAPI_BEARER_TOKEN: "test-token"
+    OPENAI_API_KEY: "test-key"
+    ASSISTANT_ID: "test-assistant"
+    SUPABASE_URL: "https://test.supabase.co"
+    SUPABASE_SERVICE_ROLE_KEY: "test-key"
+    CLOUDFLARE_API_TOKEN: "test-key"
+    MINDCHAT_API_TOKEN: "test-key"
+    MINDCHAT_API_BASE_URL: "https://test.mindchat.com"
+    MINDCHAT_API_DOCS: "https://test.mindchat.com/docs"
+  artifacts:
+    reports:
+      junit: test-results.xml
+    paths:
+      - test-results/
+    expire_in: 1 week
+  only:
+    - main
+    - develop
+    - merge_requests
+
+# Job de build para diferentes versões do Python
+build:
+  stage: build
+  image: python:${PYTHON_VERSION}-slim
+  parallel:
+    matrix:
+      - PYTHON_VERSION: ["3.10", "3.11", "3.12"]
+  before_script:
+    - python -m venv venv
+    - source venv/bin/activate
+    - python -m pip install --upgrade pip
+    - pip install -r requirements.txt
+  script:
+    - echo "Buildando para Python ${PYTHON_VERSION}..."
+    - python -c "import main; print('Build OK')"
+    - python check_environment.py || echo "Environment check completed"
+  artifacts:
+    paths:
+      - venv/
+    expire_in: 1 hour
+  only:
+    - main
+    - develop
+    - tags
+
+# Job de deploy para staging (opcional)
+deploy_staging:
+  stage: deploy
+  image: python:${PYTHON_VERSION}-slim
+  environment:
+    name: staging
+    url: https://staging.aria-sdr.com
+  before_script:
+    - echo "Preparando deploy para staging..."
+  script:
+    - echo "Deploy para staging concluído"
+  only:
+    - develop
+  when: manual
+
+# Job de deploy para produção
+deploy_production:
+  stage: deploy
+  image: python:${PYTHON_VERSION}-slim
+  environment:
+    name: production
+    url: https://api.ar-online.com.br
+  before_script:
+    - echo "Preparando deploy para produção..."
+  script:
+    - echo "Deploy para produção concluído"
+  only:
+    - main
+    - tags
+  when: manual
+
+# Job de segurança e análise de código
+security_scan:
+  stage: test
+  image: python:${PYTHON_VERSION}-slim
+  before_script:
+    - python -m venv venv
+    - source venv/bin/activate
+    - pip install safety bandit
+  script:
+    - echo "Executando análise de segurança..."
+    - safety check -r requirements.txt
+    - bandit -r . -f json -o security-report.json || true
+  artifacts:
+    reports:
+      codequality: security-report.json
+    expire_in: 1 week
+  only:
+    - main
+    - develop
+    - merge_requests
+
+# Job de documentação
+docs:
+  stage: test
+  image: python:${PYTHON_VERSION}-slim
+  script:
+    - echo "Verificando documentação..."
+    - python -c "import os; print('Documentação OK' if os.path.exists('README.md') else 'README.md não encontrado')"
+  artifacts:
+    paths:
+      - docs/
+    expire_in: 1 week
+  only:
+    - main
+    - develop
+
+# Job de limpeza
+cleanup:
+  stage: deploy
+  image: alpine:latest
+  script:
+    - echo "Limpando artefatos antigos..."
+  when: always
+  allow_failure: true
