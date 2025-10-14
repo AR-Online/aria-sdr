@@ -18,12 +18,14 @@ This project follows the AR Online Code of Conduct. By participating, you are ex
 ### Development Setup
 
 1. **Fork e Clone**
+
    ```bash
    git clone https://gitlab.com/seu-usuario/aria-sdr.git
    cd aria-sdr
    ```
 
 2. **Ambiente Virtual**
+
    ```bash
    python -m venv agno_env
    agno_env\Scripts\activate  # Windows
@@ -32,6 +34,7 @@ This project follows the AR Online Code of Conduct. By participating, you are ex
    ```
 
 3. **Dependencias**
+
    ```bash
    pip install 'openai<1.100.0'  # Versao compativel
    pip install agno fastapi uvicorn
@@ -39,6 +42,7 @@ This project follows the AR Online Code of Conduct. By participating, you are ex
    ```
 
 4. **Configuracao**
+
    ```bash
    cp config.env.example .env
    # Editar .env com suas credenciais
@@ -78,6 +82,7 @@ Tipos aceitos:
 ### Pull Request Process
 
 1. **Criar Branch**
+
    ```bash
    git checkout -b feature/nova-funcionalidade
    ```
@@ -88,6 +93,7 @@ Tipos aceitos:
    - Atualizar documentação
 
 3. **Testes Locais**
+
    ```bash
    ruff check .
    ruff format .
@@ -95,12 +101,14 @@ Tipos aceitos:
    ```
 
 4. **Commit**
+
    ```bash
    git add .
    git commit -m "feat: adiciona nova funcionalidade"
    ```
 
 5. **Push e PR**
+
    ```bash
    git push origin feature/nova-funcionalidade
    # Criar Pull Request no GitLab
@@ -184,18 +192,21 @@ FASTAPI_BEARER_TOKEN=dtransforma2026
 ### Problemas Comuns
 
 1. **OpenAI Dependency Error**
+
    ```bash
    pip uninstall openai -y
    pip install openai==1.99.9
    ```
 
 2. **AgentOS não inicia**
+
    ```bash
    agno_env\Scripts\activate
    python -c "import openai; print(openai.__version__)"
    ```
 
 3. **Pipeline falha**
+
    ```bash
    ruff check .
    ruff format .
@@ -214,10 +225,12 @@ Seguir [Semantic Versioning](https://semver.org/):
 
 1. **Atualizar CHANGELOG.md**
 2. **Criar tag**
+
    ```bash
    git tag -a v1.0.0 -m "Release v1.0.0"
    git push origin v1.0.0
    ```
+
 3. **Deploy automático via GitLab CI/CD**
 
 ## Support

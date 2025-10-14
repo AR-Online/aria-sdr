@@ -13,7 +13,7 @@ from typing import Any
 
 import requests  # pyright: ignore[reportMissingModuleSource]
 from dotenv import find_dotenv, load_dotenv  # pyright: ignore[reportMissingImports]
-from fastapi import Body, Depends, FastAPI, HTTPException, Request  # pyright: ignore[reportMissingImports]
+from fastapi import Body, Depends, FastAPI, HTTPException, Request, Header  # pyright: ignore[reportMissingImports]
 from fastapi.responses import JSONResponse  # pyright: ignore[reportMissingImports]
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer  # pyright: ignore[reportMissingImports]
 from pydantic import BaseModel
@@ -43,6 +43,10 @@ CLOUDFLARE_API_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN", "")
 MINDCHAT_API_TOKEN = os.getenv("MINDCHAT_API_TOKEN", "")
 MINDCHAT_API_BASE_URL = os.getenv("MINDCHAT_API_BASE_URL", "")
 MINDCHAT_API_DOCS = os.getenv("MINDCHAT_API_DOCS", "")
+
+# GitLab Webhook configuration
+GITLAB_WEBHOOK_TOKEN = os.getenv("GITLAB_WEBHOOK_TOKEN", "dtransforma2026")
+WHATSAPP_NUMBER = os.getenv("WHATSAPP_NUMBER", "+5516997918658")
 
 
 @app.exception_handler(Exception)
@@ -975,3 +979,177 @@ def require_bearer(request: Request) -> None:  # type: ignore[valid-type]
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing server token config")  # type: ignore[arg-type]
     if token != expected:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid bearer token")  # type: ignore[arg-type]
+
+
+# GitLab Webhook Functions
+def validate_gitlab_webhook_token(authorization: str = Header(None)) -> bool:
+    """Valida o token de autorização do webhook GitLab"""
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authorization header required")
+    
+    expected_token = f"Bearer {GITLAB_WEBHOOK_TOKEN}"
+    if authorization != expected_token:
+        raise HTTPException(status_code=401, detail="Invalid authorization token")
+    
+    return True
+
+async def send_whatsapp_notification(message: str, event_type: str = "gitlab_webhook") -> dict[str, Any]:
+    """Envia notificação via WhatsApp usando Mindchat API"""
+    try:
+        whatsapp_data = {
+            "to": WHATSAPP_NUMBER,
+            "message": f"🤖 ARIA Notification ({event_type}):\n{message}",
+            "source": "gitlab_webhook",
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        headers = {
+            "Authorization": f"Bearer {MINDCHAT_API_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        
+        response = requests.post(
+            f"{MINDCHAT_API_BASE_URL}/webhook/whatsapp",
+            json=whatsapp_data,
+            headers=headers,
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            log.info(f"Notificação WhatsApp enviada: {message}")
+            return {"status": "success", "response": response.json()}
+        else:
+            log.error(f"Erro ao enviar WhatsApp: {response.status_code} - {response.text}")
+            return {"status": "error", "error": response.text}
+            
+    except Exception as e:
+        log.error(f"Erro ao enviar notificação WhatsApp: {e}")
+        return {"status": "error", "error": str(e)}
+
+# GitLab Webhook Endpoints
+@app.post("/webhook/gitlab/aria")
+async def gitlab_webhook_endpoint(
+    request: Request,
+    payload: dict[str, Any] = Body(...),
+    _: bool = Depends(validate_gitlab_webhook_token)
+) -> JSONResponse:
+    """Endpoint principal para receber webhooks do GitLab"""
+    
+    log.info(f"Webhook GitLab recebido: {payload.get('aria_action', 'unknown')}")
+    
+    try:
+        # Processar evento baseado no tipo
+        event_type = payload.get("aria_action", "unknown")
+        project_name = payload.get("project_name", "projeto desconhecido")
+        
+        if event_type == "pipeline_notification":
+            pipeline_status = payload.get("pipeline_status", "unknown")
+            commit_message = payload.get("commit_message", "Sem mensagem")
+            branch = payload.get("branch", "branch desconhecida")
+            
+            if pipeline_status == "success":
+                message = f"✅ Pipeline do {project_name} executado com sucesso!\n📝 Commit: {commit_message}\n🌿 Branch: {branch}"
+            elif pipeline_status == "failed":
+                message = f"❌ Pipeline do {project_name} falhou!\n📝 Commit: {commit_message}\n🌿 Branch: {branch}"
+            else:
+                message = f"🔄 Pipeline do {project_name} - Status: {pipeline_status}\n📝 Commit: {commit_message}\n🌿 Branch: {branch}"
+            
+            whatsapp_result = await send_whatsapp_notification(message, "pipeline")
+            
+        elif event_type == "deployment_notification":
+            environment = payload.get("environment", "ambiente desconhecido")
+            deployment_status = payload.get("deployment_status", "unknown")
+            commit_message = payload.get("commit_message", "Sem mensagem")
+            
+            if deployment_status == "success":
+                message = f"🚀 Deploy do {project_name} para {environment} concluído!\n📝 Commit: {commit_message}"
+            elif deployment_status == "failed":
+                message = f"💥 Deploy do {project_name} para {environment} falhou!\n📝 Commit: {commit_message}"
+            else:
+                message = f"⏳ Deploy do {project_name} para {environment} - Status: {deployment_status}\n📝 Commit: {commit_message}"
+            
+            whatsapp_result = await send_whatsapp_notification(message, "deployment")
+            
+        elif event_type == "merge_request_notification":
+            mr_title = payload.get("merge_request_title", "Sem título")
+            mr_state = payload.get("merge_request_state", "unknown")
+            author_name = payload.get("author_name", "Autor desconhecido")
+            
+            if mr_state == "opened":
+                message = f"📝 Nova MR no {project_name}:\n📋 Título: {mr_title}\n👤 Autor: {author_name}"
+            elif mr_state == "merged":
+                message = f"✅ MR mergeada no {project_name}:\n📋 Título: {mr_title}\n👤 Autor: {author_name}"
+            elif mr_state == "closed":
+                message = f"❌ MR fechada no {project_name}:\n📋 Título: {mr_title}\n👤 Autor: {author_name}"
+            else:
+                message = f"🔄 MR atualizada no {project_name}:\n📋 Título: {mr_title}\n👤 Autor: {author_name}\n📊 Status: {mr_state}"
+            
+            whatsapp_result = await send_whatsapp_notification(message, "merge_request")
+            
+        elif event_type == "push_notification":
+            commit_message = payload.get("commit_message", "Sem mensagem")
+            branch = payload.get("branch", "branch desconhecida")
+            commit_count = payload.get("commit_count", "1")
+            user_name = payload.get("user_name", "Usuário desconhecido")
+            
+            message = f"📤 Push no {project_name}:\n🌿 Branch: {branch}\n📝 Commit: {commit_message}\n📊 Commits: {commit_count}\n👤 Autor: {user_name}"
+            
+            whatsapp_result = await send_whatsapp_notification(message, "push")
+            
+        else:
+            log.warning(f"Tipo de evento não reconhecido: {event_type}")
+            return JSONResponse(
+                content={
+                    "status": "ignored",
+                    "message": f"Evento {event_type} ignorado",
+                    "processed_at": datetime.now().isoformat(),
+                    "event_type": event_type
+                }
+            )
+        
+        log.info(f"Webhook processado com sucesso: {event_type}")
+        return JSONResponse(
+            content={
+                "status": "processed",
+                "message": f"Evento {event_type} processado",
+                "processed_at": datetime.now().isoformat(),
+                "event_type": event_type,
+                "whatsapp_result": whatsapp_result
+            }
+        )
+        
+    except Exception as e:
+        log.error(f"Erro ao processar webhook: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+@app.get("/webhook/gitlab/health")
+async def gitlab_webhook_health() -> JSONResponse:
+    """Health check para o webhook GitLab"""
+    return JSONResponse(
+        content={
+            "status": "healthy",
+            "service": "ARIA GitLab Webhook",
+            "version": "1.0.0",
+            "timestamp": datetime.now().isoformat()
+        }
+    )
+
+@app.post("/webhook/gitlab/test")
+async def test_gitlab_webhook(
+    test_payload: dict[str, Any] = Body(...),
+    _: bool = Depends(validate_gitlab_webhook_token)
+) -> JSONResponse:
+    """Endpoint para testar webhook GitLab"""
+    
+    log.info("Teste de webhook GitLab iniciado")
+    
+    # Adicionar dados de teste se não fornecidos
+    if "aria_action" not in test_payload:
+        test_payload["aria_action"] = "pipeline_notification"
+    if "project_name" not in test_payload:
+        test_payload["project_name"] = "aria-sdr-test"
+    if "pipeline_status" not in test_payload:
+        test_payload["pipeline_status"] = "success"
+    
+    # Processar como webhook normal
+    return await gitlab_webhook_endpoint(None, test_payload, True)

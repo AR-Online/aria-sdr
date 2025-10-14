@@ -3,6 +3,7 @@
 ## GitLab Agent Setup
 
 ### Token Information
+
 - **Agent Token**: `glagent-VggOFD80ebT2VK2VoajgC286MQpwOjE4dTgxMww.01.130rcoyhi`
 - **Namespace**: `gitlab-agent-aria`
 - **KAS Address**: `wss://kas.gitlab.com`
@@ -25,6 +26,7 @@ helm upgrade --install aria gitlab/gitlab-agent \
 ## ARIA-SDR Kubernetes Manifests
 
 ### Namespace
+
 ```yaml
 apiVersion: v1
 kind: Namespace
@@ -36,6 +38,7 @@ metadata:
 ```
 
 ### ConfigMap
+
 ```yaml
 apiVersion: v1
 kind: ConfigMap
@@ -55,6 +58,7 @@ data:
 ```
 
 ### Secret
+
 ```yaml
 apiVersion: v1
 kind: Secret
@@ -72,6 +76,7 @@ stringData:
 ```
 
 ### Deployment
+
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -122,6 +127,7 @@ spec:
 ```
 
 ### Service
+
 ```yaml
 apiVersion: v1
 kind: Service
@@ -139,6 +145,7 @@ spec:
 ```
 
 ### Ingress
+
 ```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -189,6 +196,7 @@ deploy_k8s:
 ## Monitoring and Logs
 
 ### Prometheus Monitoring
+
 ```yaml
 apiVersion: v1
 kind: ServiceMonitor
@@ -205,6 +213,7 @@ spec:
 ```
 
 ### Logging Configuration
+
 ```yaml
 apiVersion: v1
 kind: ConfigMap
@@ -219,6 +228,7 @@ data:
 ## Security
 
 ### Network Policies
+
 ```yaml
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -243,6 +253,7 @@ spec:
 ```
 
 ### Pod Security Policy
+
 ```yaml
 apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
@@ -271,6 +282,7 @@ spec:
 ## Backup and Recovery
 
 ### Persistent Volume
+
 ```yaml
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -288,6 +300,7 @@ spec:
 ## Troubleshooting
 
 ### Common Commands
+
 ```bash
 # Check pods
 kubectl get pods -n aria-sdr
@@ -306,6 +319,7 @@ kubectl port-forward svc/aria-sdr-service 8000:80 -n aria-sdr
 ```
 
 ### Health Checks
+
 ```bash
 # Check health endpoint
 curl http://localhost:8000/health
