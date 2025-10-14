@@ -9,17 +9,20 @@ Este documento registra os workflows originais do n8n que foram migrados para o 
 ## 1. Workflows Identificados no Codigo
 
 ### 1.1 Workflow Principal de Routing
+
 **Origem**: Sistema n8n original  
 **Destino**: Endpoint `/assist/routing` no FastAPI  
 **Status**: Migrado
 
-#### Funcionalidades Preservadas:
+#### Funcionalidades Preservadas
+
 - Classificacao de volume de mensagens (alto/baixo)
 - Roteamento inteligente para FAQ, agendamento ou loja
 - Integracao com OpenAI para respostas
 - Suporte a thread_id para continuidade de conversas
 
-#### Regras de Negocio Mantidas:
+#### Regras de Negocio Mantidas
+
 ```python
 # Volume alto: >= 1200 mensagens/mes -> Agendamento
 # Volume baixo: < 1200 mensagens/mes -> Loja
@@ -27,22 +30,26 @@ VOLUME_ALTO_LIMIAR = 1200
 ```
 
 ### 1.2 Workflow de Integracao WhatsApp
+
 **Origem**: n8n webhook  
 **Destino**: Endpoint `/whatsapp/webhook`  
 **Status**: Migrado
 
-#### Funcionalidades Preservadas:
+#### Funcionalidades Preservadas
+
 - Recebimento de mensagens via webhook
 - Processamento com ARIA
 - Envio de respostas via Mindchat
 - Suporte a diferentes tipos de mensagem
 
 ### 1.3 Workflow de RAG (Retrieval Augmented Generation)
+
 **Origem**: n8n com Supabase  
 **Destino**: Endpoint `/rag/query`  
 **Status**: Migrado
 
-#### Funcionalidades Preservadas:
+#### Funcionalidades Preservadas
+
 - Busca semantica no Supabase
 - Embeddings com OpenAI
 - Filtros por fonte (FAQ, contexto, etc.)
@@ -67,7 +74,8 @@ VOLUME_ALTO_LIMIAR = 1200
 
 ### 2.2 Melhorias Implementadas
 
-#### Funcionalidades Adicionadas:
+#### Funcionalidades Adicionadas
+
 - **AgentOS Integration**: Sistema de agentes mais robusto
 - **Cloudflare Integration**: Protecao e cache
 - **Multiple Channels**: Suporte a diferentes canais
@@ -75,7 +83,8 @@ VOLUME_ALTO_LIMIAR = 1200
 - **Health Checks**: Endpoints de monitoramento
 - **Security**: Autenticacao Bearer token
 
-#### Performance Improvements:
+#### Performance Improvements
+
 - **Caching**: Cache de embeddings e respostas
 - **Async Processing**: Processamento assincrono
 - **Connection Pooling**: Pool de conexoes HTTP
@@ -87,7 +96,8 @@ VOLUME_ALTO_LIMIAR = 1200
 
 ### 3.1 Variaveis de Ambiente
 
-#### Mantidas do n8n:
+#### Mantidas do n8n
+
 ```bash
 # OpenAI
 OPENAI_API_KEY=sk-proj-your-openai-api-key-here
@@ -101,7 +111,8 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 VOLUME_ALTO_LIMIAR=1200
 ```
 
-#### Adicionadas para Agno:
+#### Adicionadas para Agno
+
 ```bash
 # Agno Integration
 AGNO_AUTH_TOKEN=seu_token_agno_aqui
@@ -119,13 +130,15 @@ MINDCHAT_API_BASE_URL=https://api-aronline.mindchatapp.com.br
 
 ### 3.2 Configuracoes de Negocio
 
-#### Regras de Volume:
+#### Regras de Volume
+
 - **Volume Alto**: >= 1200 mensagens/mes
 - **Acao Volume Alto**: Agendamento
 - **Volume Baixo**: < 1200 mensagens/mes  
 - **Acao Volume Baixo**: Loja/Creditos
 
-#### Configuracoes de RAG:
+#### Configuracoes de RAG
+
 - **Modelo Embedding**: text-embedding-3-small
 - **Dimensao**: 1536
 - **Top K**: 5 (padrao)
@@ -165,7 +178,8 @@ Apos analise detalhada, **NAO foram identificadas funcionalidades perdidas** na 
 
 ### 5.2 Melhorias Implementadas
 
-#### Funcionalidades Expandidas:
+#### Funcionalidades Expandidas
+
 - **Multi-channel Support**: Suporte a multiplos canais
 - **Better Error Handling**: Tratamento de erros mais robusto
 - **Security**: Autenticacao e autorizacao
@@ -208,12 +222,14 @@ def test_n8n_whatsapp_equivalence():
 ## 7. Proximos Passos
 
 ### 7.1 Validacao Completa
+
 1. Documentar workflows migrados
 2. Implementar testes de equivalencia
 3. Validar todas as funcionalidades
 4. Criar matriz de rastreabilidade completa
 
 ### 7.2 Melhorias Futuras
+
 1. **Multi-channel Expansion**: Slack, Email, Telegram
 2. **Advanced Analytics**: Metricas detalhadas
 3. **A/B Testing**: Testes de diferentes respostas
@@ -224,9 +240,11 @@ def test_n8n_whatsapp_equivalence():
 ## 8. Conclusao
 
 ### Status da Migracao
+
 **COMPLETA E BEM-SUCEDIDA**: Todos os workflows n8n foram migrados para Agno sem perda de funcionalidades.
 
 ### Principais Conquistas
+
 - **100% de funcionalidades preservadas**
 - **Melhorias significativas implementadas**
 - **Arquitetura mais robusta e escalavel**
@@ -234,6 +252,7 @@ def test_n8n_whatsapp_equivalence():
 - **Suporte a multiplos canais**
 
 ### Recomendacao
+
 A migracao foi bem-sucedida e o sistema esta pronto para producao. Recomenda-se implementar os testes de equivalencia para validacao completa.
 
 ---

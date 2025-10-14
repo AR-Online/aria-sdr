@@ -5,6 +5,7 @@ Este guia explica como conectar o ARIA-SDR AgentOS ao Control Plane do Agno segu
 ## 🚀 Início Rápido
 
 ### 1. Configurar Ambiente
+
 ```bash
 # Copiar arquivo de configuração
 cp config.env.example .env
@@ -15,11 +16,13 @@ cp config.env.example .env
 ```
 
 ### 2. Instalar Dependências
+
 ```bash
 pip install -U agno fastapi uvicorn
 ```
 
 ### 3. Executar Script de Configuração
+
 ```bash
 python scripts/connect_to_control_plane.py
 ```
@@ -27,6 +30,7 @@ python scripts/connect_to_control_plane.py
 ## 📋 Processo de Conexão
 
 ### Passo 1: Iniciar AgentOS
+
 ```bash
 python aria_agentos_optimized.py
 ```
@@ -98,6 +102,7 @@ Após conectar, verifique:
 ## 🚨 Solução de Problemas
 
 ### Erro de Conexão
+
 ```bash
 # Verificar se o servidor está rodando
 curl http://localhost:7777/health
@@ -107,12 +112,14 @@ python aria_agentos_optimized.py
 ```
 
 ### Dependências Faltando
+
 ```bash
 # Reinstalar dependências
 pip install -U agno fastapi uvicorn python-dotenv
 ```
 
 ### Variáveis Não Configuradas
+
 ```bash
 # Verificar configuração
 python scripts/connect_to_control_plane.py
