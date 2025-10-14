@@ -1,10 +1,10 @@
-# GitLab CI/CD Pipeline para ARIA-SDR com Inputs Parametrizáveis
-# Baseado na documentação: https://docs.gitlab.com/ci/inputs/#define-input-parameters-with-specinputs
+# GitLab CI/CD Pipeline para ARIA-SDR com Inputs Parametrizaveis
+# Baseado na documentacao: https://docs.gitlab.com/ci/inputs/#define-input-parameters-with-specinputs
 
 spec:
   inputs:
     python_version:
-      description: "Versão do Python para usar nos jobs"
+      description: "Versao do Python para usar nos jobs"
       type: string
       default: "3.11"
       options: ["3.10", "3.11", "3.12"]
@@ -20,23 +20,28 @@ spec:
       default: "staging"
       options: ["staging", "production"]
     
+    deploy_url:
+      description: "URL de deploy do ambiente"
+      type: string
+      default: "https://staging.aria-sdr.com"
+    
     run_security_scan:
-      description: "Executar análise de segurança"
+      description: "Executar analise de seguranca"
       type: boolean
       default: true
     
     run_docs_check:
-      description: "Verificar documentação"
+      description: "Verificar documentacao"
       type: boolean
       default: true
     
     parallel_builds:
-      description: "Número de builds paralelos"
+      description: "Numero de builds paralelos"
       type: number
       default: 3
     
     cache_expiry:
-      description: "Tempo de expiração do cache em horas"
+      description: "Tempo de expiracao do cache em horas"
       type: number
       default: 24
 ---
@@ -47,12 +52,12 @@ stages:
   - deploy
 
 variables:
-  # Configurações do Python usando input
+  # Configuracoes do Python usando input
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   PIP_DEFAULT_TIMEOUT: 60
   PYTHON_VERSION: $[[ inputs.python_version ]]
 
-# Cache para dependências Python
+# Cache para dependencias Python
 cache:
   paths:
     - .cache/pip/
@@ -60,7 +65,7 @@ cache:
   policy: pull-push
   when: always
 
-# Job de teste parametrizável
+# Job de teste parametrizavel
 test:
   stage: $[[ inputs.test_stage ]]
   image: python:$[[ inputs.python_version ]]-slim
@@ -76,7 +81,7 @@ test:
     - ruff format --check .
     - pytest tests/ -v --tb=short --junitxml=test-results.xml
   variables:
-    # Variáveis de ambiente para testes
+    # Variaveis de ambiente para testes
     FASTAPI_BEARER_TOKEN: "test-token"
     OPENAI_API_KEY: "test-key"
     ASSISTANT_ID: "test-assistant"
@@ -97,7 +102,7 @@ test:
     - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "develop"
 
-# Job de build paralelo parametrizável
+# Job de build paralelo parametrizavel
 build:
   stage: build
   image: python:$[[ inputs.python_version ]]-slim
@@ -122,24 +127,24 @@ build:
     - if: $CI_COMMIT_BRANCH == "develop"
     - if: $CI_COMMIT_TAG
 
-# Job de deploy parametrizável
+# Job de deploy parametrizavel
 deploy:
   stage: deploy
   image: python:$[[ inputs.python_version ]]-slim
   environment:
     name: $[[ inputs.deploy_environment ]]
-    url: $[[ inputs.deploy_environment == "production" && "https://api.ar-online.com.br" || "https://staging.aria-sdr.com" ]]
+    url: $[[ inputs.deploy_url ]]
   before_script:
     - echo "Preparando deploy para $[[ inputs.deploy_environment ]]..."
   script:
-    - echo "Deploy para $[[ inputs.deploy_environment ]] concluído"
+    - echo "Deploy para $[[ inputs.deploy_environment ]] concluido"
     - echo "Python version: $[[ inputs.python_version ]]"
   rules:
-    - if: $CI_COMMIT_BRANCH == "main" && $[[ inputs.deploy_environment == "production" ]]
-    - if: $CI_COMMIT_BRANCH == "develop" && $[[ inputs.deploy_environment == "staging" ]]
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
   when: manual
 
-# Job de segurança condicional
+# Job de seguranca condicional
 security_scan:
   stage: $[[ inputs.test_stage ]]
   image: python:$[[ inputs.python_version ]]-slim
@@ -148,7 +153,7 @@ security_scan:
     - source venv/bin/activate
     - pip install safety bandit
   script:
-    - echo "Executando análise de segurança..."
+    - echo "Executando analise de seguranca..."
     - safety check -r requirements.txt
     - bandit -r . -f json -o security-report.json || true
   artifacts:
@@ -161,13 +166,13 @@ security_scan:
     - if: $[[ inputs.run_security_scan == false ]]
       when: never
 
-# Job de documentação condicional
+# Job de documentacao condicional
 docs:
   stage: $[[ inputs.test_stage ]]
   image: python:$[[ inputs.python_version ]]-slim
   script:
-    - echo "Verificando documentação..."
-    - python -c "import os; print('Documentação OK' if os.path.exists('README.md') else 'README.md não encontrado')"
+    - echo "Verificando documentacao..."
+    - python -c "import os; print('Documentacao OK' if os.path.exists('README.md') else 'README.md nao encontrado')"
     - echo "Python version: $[[ inputs.python_version ]]"
   artifacts:
     paths:
