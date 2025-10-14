@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Script de Configuração para Conectar ARIA-SDR ao Control Plane
-Baseado na documentação oficial: https://docs.agno.com/agent-os/connecting-your-os
+Script de Configuracao para Conectar ARIA-SDR ao Control Plane
+Baseado na documentacao oficial: https://docs.agno.com/agent-os/connecting-your-os
 """
 
 import os
@@ -11,31 +11,31 @@ import webbrowser
 from dotenv import load_dotenv
 
 def print_header():
-    """Imprime cabeçalho do script"""
+    """Imprime cabecalho do script"""
     print("=" * 80)
-    print("ARIA-SDR - Configuração para Control Plane")
-    print("Documentação: https://docs.agno.com/agent-os/connecting-your-os")
+    print("ARIA-SDR - Configuracao para Control Plane")
+    print("Documentacao: https://docs.agno.com/agent-os/connecting-your-os")
     print("=" * 80)
 
 def check_environment():
-    """Verifica configuração do ambiente"""
-    print("\n1. Verificando configuração do ambiente...")
+    """Verifica configuracao do ambiente"""
+    print("\n1. Verificando configuracao do ambiente...")
     print("-" * 50)
     
-    # Carregar variáveis de ambiente
+    # Carregar variaveis de ambiente
     load_dotenv()
     
-    # Variáveis obrigatórias
+    # Variaveis obrigatorias
     required_vars = {
         "OPENAI_API_KEY": "Chave da API OpenAI",
-        "WHATSAPP_ACCESS_TOKEN": "Token de acesso WhatsApp (opcional)",
-        "WHATSAPP_PHONE_NUMBER_ID": "ID do número WhatsApp (opcional)",
     }
     
-    # Variáveis opcionais
+    # Variaveis opcionais
     optional_vars = {
+        "WHATSAPP_ACCESS_TOKEN": "Token de acesso WhatsApp",
+        "WHATSAPP_PHONE_NUMBER_ID": "ID do numero WhatsApp",
         "GOOGLE_API_KEY": "Chave da API Google",
-        "DATABASE_URL": "URL do banco PostgreSQL (produção)",
+        "DATABASE_URL": "URL do banco PostgreSQL (producao)",
         "MODEL_PROVIDER": "Provedor do modelo (openai/google)",
         "MODEL_ID": "ID do modelo",
         "HOST": "Host do servidor",
@@ -45,7 +45,7 @@ def check_environment():
     missing_required = []
     configured_optional = []
     
-    # Verificar variáveis obrigatórias
+    # Verificar variaveis obrigatorias
     for var, description in required_vars.items():
         value = os.getenv(var)
         if not value or value.startswith("your_") or value.startswith("seu_"):
@@ -53,28 +53,28 @@ def check_environment():
         else:
             print(f"  OK: {var}: {description}")
     
-    # Verificar variáveis opcionais
+    # Verificar variaveis opcionais
     for var, description in optional_vars.items():
         value = os.getenv(var)
         if value and not value.startswith("your_") and not value.startswith("seu_"):
             configured_optional.append(f"  OK: {var}: {description}")
     
     if missing_required:
-        print(f"\nERRO: Variáveis obrigatórias não configuradas:")
+        print(f"\nERRO: Variaveis obrigatorias nao configuradas:")
         for var in missing_required:
             print(var)
         return False
     
     if configured_optional:
-        print(f"\nOK: Variáveis opcionais configuradas:")
+        print(f"\nOK: Variaveis opcionais configuradas:")
         for var in configured_optional:
             print(var)
     
     return True
 
 def check_dependencies():
-    """Verifica dependências instaladas"""
-    print("\n2. Verificando dependências...")
+    """Verifica dependencias instaladas"""
+    print("\n2. Verificando dependencias...")
     print("-" * 50)
     
     dependencies = [
@@ -93,7 +93,7 @@ def check_dependencies():
             missing_deps.append(f"  ERRO: {package}: {description}")
     
     if missing_deps:
-        print(f"\n❌ Dependências não instaladas:")
+        print(f"\nERRO: Dependencias nao instaladas:")
         for dep in missing_deps:
             print(dep)
         print("\nInstale com: pip install -U agno fastapi uvicorn")
@@ -106,36 +106,36 @@ def start_agentos():
     print("\n3. Iniciando AgentOS...")
     print("-" * 50)
     
-    # Configurações padrão
+    # Configuracoes padrao
     host = os.getenv("HOST", "localhost")
     port = os.getenv("PORT", "7777")
     
-    print(f"  🌐 Host: {host}")
-    print(f"  🔌 Porta: {port}")
-    print(f"  🔗 Endpoint: http://{host}:{port}")
+    print(f"  Host: {host}")
+    print(f"  Porta: {port}")
+    print(f"  Endpoint: http://{host}:{port}")
     
     try:
         # Importar e iniciar AgentOS
         from aria_agentos_optimized import aria_agentos
         
-        print("\n  🚀 Iniciando servidor...")
-        print("  📋 Para parar: Ctrl+C")
-        print("  🔄 Para recarregar: Salve qualquer arquivo")
+        print("\n  Iniciando servidor...")
+        print("  Para parar: Ctrl+C")
+        print("  Para recarregar: Salve qualquer arquivo")
         
         # Iniciar servidor
         aria_agentos.serve(host=host, port=int(port), reload=True)
         
     except KeyboardInterrupt:
-        print("\n  ⏹️ Servidor parado pelo usuário")
+        print("\n  Servidor parado pelo usuario")
     except Exception as e:
-        print(f"\n  ❌ Erro ao iniciar servidor: {e}")
+        print(f"\n  ERRO: Erro ao iniciar servidor: {e}")
         return False
     
     return True
 
 def show_connection_instructions():
-    """Mostra instruções para conectar ao Control Plane"""
-    print("\n4. Instruções para conectar ao Control Plane")
+    """Mostra instrucoes para conectar ao Control Plane"""
+    print("\n4. Instrucoes para conectar ao Control Plane")
     print("-" * 50)
     
     host = os.getenv("HOST", "localhost")
@@ -143,22 +143,22 @@ def show_connection_instructions():
     endpoint = f"http://{host}:{port}"
     
     print(f"""
-📋 PASSO A PASSO:
+PASSO A PASSO:
 
-1. 🌐 Acesse: https://platform.agno.com
-2. 👤 Faça login na sua conta Agno
-3. ➕ Clique no botão "+" ao lado de "Add new OS"
-4. 🏠 Selecione "Local" para desenvolvimento
-5. 🔗 Endpoint URL: {endpoint}
-6. 📝 OS Name: ARIA-SDR Development
-7. 🏷️ Tags: development, aria-sdr, whatsapp
-8. 🔗 Clique em "CONNECT"
+1. Acesse: https://platform.agno.com
+2. Faca login na sua conta Agno
+3. Clique no botao "+" ao lado de "Add new OS"
+4. Selecione "Local" para desenvolvimento
+5. Endpoint URL: {endpoint}
+6. OS Name: ARIA-SDR Development
+7. Tags: development, aria-sdr, whatsapp
+8. Clique em "CONNECT"
 
-✅ Após conectar, você poderá:
+OK: Apos conectar, voce podera:
    • Conversar com o agente ARIA-SDR
    • Gerenciar conhecimento
-   • Monitorar sessões
-   • Configurar memória
+   • Monitorar sessoes
+   • Configurar memoria
 """)
 
 def open_control_plane():
@@ -168,48 +168,79 @@ def open_control_plane():
     
     try:
         webbrowser.open("https://platform.agno.com")
-        print("  🌐 Control Plane aberto no navegador")
+        print("  Control Plane aberto no navegador")
     except Exception as e:
-        print(f"  ⚠️ Não foi possível abrir automaticamente: {e}")
-        print("  🌐 Acesse manualmente: https://platform.agno.com")
+        print(f"  AVISO: Nao foi possivel abrir automaticamente: {e}")
+        print("  Acesse manualmente: https://platform.agno.com")
+
+def test_agentos_connection():
+    """Testa se o AgentOS esta funcionando"""
+    print("\n6. Testando conexao do AgentOS...")
+    print("-" * 50)
+    
+    try:
+        import requests
+        host = os.getenv("HOST", "localhost")
+        port = os.getenv("PORT", "7777")
+        endpoint = f"http://{host}:{port}"
+        
+        # Testar endpoint de health
+        response = requests.get(f"{endpoint}/health", timeout=5)
+        if response.status_code == 200:
+            print(f"  OK: AgentOS respondendo em {endpoint}")
+            return True
+        else:
+            print(f"  ERRO: AgentOS retornou status {response.status_code}")
+            return False
+            
+    except requests.exceptions.ConnectionError:
+        print(f"  ERRO: Nao foi possivel conectar ao AgentOS")
+        print(f"  Certifique-se de que o servidor esta rodando em {endpoint}")
+        return False
+    except ImportError:
+        print("  AVISO: requests nao instalado - instale com: pip install requests")
+        return False
+    except Exception as e:
+        print(f"  ERRO: Erro ao testar conexao: {e}")
+        return False
 
 def main():
-    """Função principal"""
+    """Funcao principal"""
     
     print_header()
     
-    # Verificar configuração
+    # Verificar configuracao
     if not check_environment():
-        print("\n❌ Configure as variáveis obrigatórias no arquivo .env")
+        print("\nERRO: Configure as variaveis obrigatorias no arquivo .env")
         sys.exit(1)
     
-    # Verificar dependências
+    # Verificar dependencias
     if not check_dependencies():
-        print("\n❌ Instale as dependências necessárias")
+        print("\nERRO: Instale as dependencias necessarias")
         sys.exit(1)
     
-    # Mostrar instruções
+    # Mostrar instrucoes
     show_connection_instructions()
     
     # Perguntar se quer abrir Control Plane
     try:
-        response = input("\n🌐 Abrir Control Plane no navegador? (s/n): ").lower()
+        response = input("\nAbrir Control Plane no navegador? (s/n): ").lower()
         if response in ['s', 'sim', 'y', 'yes']:
             open_control_plane()
     except KeyboardInterrupt:
-        print("\n⏹️ Operação cancelada")
+        print("\nOperacao cancelada")
         sys.exit(0)
     
     # Perguntar se quer iniciar AgentOS
     try:
-        response = input("\n🚀 Iniciar AgentOS agora? (s/n): ").lower()
+        response = input("\nIniciar AgentOS agora? (s/n): ").lower()
         if response in ['s', 'sim', 'y', 'yes']:
             start_agentos()
         else:
-            print("\n📋 Para iniciar manualmente:")
+            print("\nPara iniciar manualmente:")
             print("   python aria_agentos_optimized.py")
     except KeyboardInterrupt:
-        print("\n⏹️ Operação cancelada")
+        print("\nOperacao cancelada")
         sys.exit(0)
 
 if __name__ == "__main__":

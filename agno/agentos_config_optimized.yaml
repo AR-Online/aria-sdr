@@ -1,0 +1,40 @@
+# ARIA-SDR AgentOS Configuration
+# Baseado na documentacao oficial: https://docs.agno.com/agent-os/customize/config
+
+# Configuracao do Chat
+chat:
+  quick_prompts:
+    aria-sdr-agent:
+      - "Qual e o seu volume mensal de mensagens?"
+      - "Precisa de agendamento ou compra de creditos?"
+      - "Como posso ajudar com seu negocio?"
+
+# Configuracao da Memoria
+memory:
+  dbs:
+    - db_id: aria-sdr-db
+      domain_config:
+        display_name: "Memorias dos usuarios ARIA-SDR"
+    - db_id: aria-business-db
+      domain_config:
+        display_name: "Dados de negocio e volumetria"
+
+# Configuracao das Sessoes
+session:
+  display_name: "Sessoes ARIA-SDR"
+  auto_cleanup_days: 30
+
+# Configuracao das Metricas
+metrics:
+  display_name: "Metricas ARIA-SDR"
+  retention_days: 90
+
+# Configuracao do Conhecimento
+knowledge:
+  display_name: "Base de Conhecimento ARIA"
+  max_file_size_mb: 10
+
+# Configuracao de Avaliacao
+evals:
+  display_name: "Avaliacoes ARIA-SDR"
+  auto_eval_enabled: true
