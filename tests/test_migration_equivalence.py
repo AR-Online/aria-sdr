@@ -4,10 +4,7 @@ Testes de Equivalencia n8n -> Agno
 ARIA-SDR - Validacao de Migracao
 """
 
-import os
 import pytest
-import requests
-from typing import Dict, Any
 from fastapi.testclient import TestClient
 
 # Importar a aplicacao FastAPI
@@ -194,12 +191,12 @@ def run_equivalence_tests():
     agno_token = os.getenv("AGNO_AUTH_TOKEN", "")
     agno_bot_id = os.getenv("AGNO_BOT_ID", "")
     
-    print(f"\nConfiguracao Agno:")
+    print("\nConfiguracao Agno:")
     print(f"  AGNO_AUTH_TOKEN: {'Configurado' if agno_token else 'Nao configurado'}")
     print(f"  AGNO_BOT_ID: {'Configurado' if agno_bot_id else 'Nao configurado'}")
     
     # Executar testes
-    print(f"\nExecutando testes de equivalencia...")
+    print("\nExecutando testes de equivalencia...")
     
     # Usar pytest para executar os testes
     pytest.main([

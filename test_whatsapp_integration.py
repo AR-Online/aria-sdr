@@ -4,9 +4,7 @@ Script de teste para integração WhatsApp via Mindchat
 Testa a conexão e funcionalidade da ARIA-SDR com WhatsApp
 """
 
-import os
 import sys
-import json
 import time
 import requests
 from datetime import datetime
@@ -15,7 +13,7 @@ def load_env():
     """Carrega variáveis de ambiente do arquivo .env"""
     env_vars = {}
     try:
-        with open('.env', 'r', encoding='utf-8') as f:
+        with open('.env', encoding='utf-8') as f:
             for line in f:
                 line = line.strip()
                 if line and not line.startswith('#') and '=' in line:
@@ -180,7 +178,7 @@ def main():
     
     missing_vars = [var for var in required_vars if not env_vars.get(var)]
     if missing_vars:
-        print(f"❌ Variáveis obrigatórias não encontradas: {', '.join(missing_vars)}")
+        print("❌ Variáveis obrigatórias não encontradas: " + ', '.join(missing_vars))
         print("   Configure essas variáveis no arquivo .env")
         return False
     
@@ -218,7 +216,7 @@ def main():
         if result:
             passed += 1
     
-    print(f"\n🎯 Resultado: {passed}/{total} testes passaram")
+        print("\n🎯 Resultado: " + str(passed) + "/" + str(total) + " testes passaram")
     
     if passed == total:
         print("🎉 Todos os testes passaram! Integração WhatsApp funcionando.")
