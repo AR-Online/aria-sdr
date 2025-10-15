@@ -14,7 +14,7 @@ from typing import Any
 import requests  # pyright: ignore[reportMissingModuleSource]
 from dotenv import find_dotenv, load_dotenv  # pyright: ignore[reportMissingImports]
 from fastapi import Body, Depends, FastAPI, HTTPException, Request, Header  # pyright: ignore[reportMissingImports]
-from fastapi.responses import JSONResponse  # pyright: ignore[reportMissingImports]
+from fastapi.responses import JSONResponse, PlainTextResponse  # pyright: ignore[reportMissingImports]
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer  # pyright: ignore[reportMissingImports]
 from pydantic import BaseModel
 from requests.adapters import HTTPAdapter  # pyright: ignore[reportMissingModuleSource]
@@ -1450,3 +1450,176 @@ async def send_manual_mindchat_message(
     result = await send_mindchat_message(to, message, message_type)
     
     return JSONResponse(content=result)
+
+# Mindchat Real Integration - Endpoints descobertos na API real
+@app.get("/mindchat/health")
+async def mindchat_health() -> JSONResponse:
+    """Health check da integração Mindchat real"""
+    return JSONResponse(content={
+        "status": "healthy",
+        "service": "ARIA Mindchat Integration Real",
+        "version": "2.0.0",
+        "api_base_url": MINDCHAT_API_BASE_URL,
+        "timestamp": datetime.now().isoformat()
+    })
+
+@app.get("/mindchat/messages")
+async def get_mindchat_messages(
+    page: int = 1,
+    page_size: int = 20
+) -> JSONResponse:
+    """Endpoint para buscar mensagens do Mindchat real"""
+    
+    try:
+        headers = {
+            "Authorization": f"Bearer {MINDCHAT_API_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        
+        params = {
+            "page": page,
+            "pageSize": page_size
+        }
+        
+        response = requests.get(
+            f"{MINDCHAT_API_BASE_URL}/api/messages",
+            headers=headers,
+            params=params,
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            log.info(f"Mensagens Mindchat obtidas: {data.get('count', 0)} total")
+            return JSONResponse(content={"status": "success", "data": data})
+        else:
+            log.error(f"Erro ao buscar mensagens Mindchat: {response.status_code}")
+            return JSONResponse(content={"status": "error", "error": response.text})
+            
+    except Exception as e:
+        log.error(f"Exceção ao buscar mensagens Mindchat: {e}")
+        return JSONResponse(content={"status": "error", "error": str(e)})
+
+@app.post("/mindchat/send")
+async def send_mindchat_message_real(
+    phone: str,
+    message: str,
+    message_type: str = "text"
+) -> JSONResponse:
+    """Endpoint para envio de mensagem via Mindchat real"""
+    
+    try:
+        headers = {
+            "Authorization": f"Bearer {MINDCHAT_API_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "phone": phone,
+            "message": message,
+            "type": message_type
+        }
+        
+        response = requests.post(
+            f"{MINDCHAT_API_BASE_URL}/api/send",
+            json=payload,
+            headers=headers,
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            log.info(f"Mensagem Mindchat enviada para {phone}: {message[:50]}...")
+            return JSONResponse(content={"status": "success", "response": data})
+        else:
+            log.error(f"Erro ao enviar mensagem Mindchat: {response.status_code} - {response.text}")
+            return JSONResponse(content={"status": "error", "error": response.text})
+            
+    except Exception as e:
+        log.error(f"Exceção ao enviar mensagem Mindchat: {e}")
+        return JSONResponse(content={"status": "error", "error": str(e)})
+
+@app.post("/mindchat/webhook/create")
+async def create_mindchat_webhook_real(
+    webhook_url: str,
+    events: str = "message,status,delivery"
+) -> JSONResponse:
+    """Endpoint para criar webhook no Mindchat real"""
+    
+    try:
+        headers = {
+            "Authorization": f"Bearer {MINDCHAT_API_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        
+        # Converter string de eventos para lista
+        events_list = [event.strip() for event in events.split(",")]
+        
+        payload = {
+            "url": webhook_url,
+            "events": events_list,
+            "verify_token": MINDCHAT_VERIFY_TOKEN,
+            "active": True,
+            "description": "ARIA-SDR Webhook Integration Real"
+        }
+        
+        response = requests.post(
+            f"{MINDCHAT_API_BASE_URL}/webhook",
+            json=payload,
+            headers=headers,
+            timeout=10
+        )
+        
+        if response.status_code in [200, 201]:
+            data = response.json()
+            log.info(f"Webhook Mindchat criado: {webhook_url}")
+            return JSONResponse(content={"status": "success", "response": data})
+        else:
+            log.error(f"Erro ao criar webhook Mindchat: {response.status_code} - {response.text}")
+            return JSONResponse(content={"status": "error", "error": response.text})
+            
+    except Exception as e:
+        log.error(f"Exceção ao criar webhook Mindchat: {e}")
+        return JSONResponse(content={"status": "error", "error": str(e)})
+
+@app.get("/mindchat/conversations")
+async def get_mindchat_conversations_real() -> JSONResponse:
+    """Endpoint para buscar conversas do Mindchat real"""
+    
+    try:
+        headers = {
+            "Authorization": f"Bearer {MINDCHAT_API_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        
+        response = requests.get(
+            f"{MINDCHAT_API_BASE_URL}/api/conversations",
+            headers=headers,
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            log.info("Conversas Mindchat obtidas com sucesso")
+            return JSONResponse(content={"status": "success", "data": data})
+        else:
+            log.error(f"Erro ao buscar conversas Mindchat: {response.status_code}")
+            return JSONResponse(content={"status": "error", "error": response.text})
+            
+    except Exception as e:
+        log.error(f"Exceção ao buscar conversas Mindchat: {e}")
+        return JSONResponse(content={"status": "error", "error": str(e)})
+
+@app.get("/mindchat/webhook/verify")
+async def verify_mindchat_webhook_real(
+    hub_mode: str,
+    hub_challenge: str,
+    hub_verify_token: str
+):
+    """Verificação do webhook Mindchat real"""
+    
+    if hub_mode == "subscribe" and hub_verify_token == MINDCHAT_VERIFY_TOKEN:
+        log.info("Webhook Mindchat real verificado com sucesso")
+        return PlainTextResponse(content=hub_challenge)
+    else:
+        raise HTTPException(status_code=403, detail="Verification failed")

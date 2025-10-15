@@ -30,7 +30,7 @@ def generate_webhook_signature(payload: str, secret: str) -> str:
 
 def test_mindchat_webhook_verification():
     """Testa verificação do webhook Mindchat"""
-    print("🔍 Testando verificação do webhook Mindchat...")
+    print("Testando verificacao do webhook Mindchat...")
     
     try:
         params = {
@@ -42,15 +42,15 @@ def test_mindchat_webhook_verification():
         response = requests.get(f"{BASE_URL}/webhook/mindchat/verify", params=params)
         
         if response.status_code == 200 and response.text == "test_challenge_123":
-            print("✅ Verificação do webhook OK")
+            print("OK: Verificacao do webhook OK")
             return True
         else:
-            print(f"❌ Verificação do webhook falhou: {response.status_code}")
+            print(f"ERRO: Verificacao do webhook falhou: {response.status_code}")
             print(f"   Response: {response.text}")
             return False
             
     except Exception as e:
-        print(f"❌ Erro na verificação do webhook: {e}")
+        print(f"ERRO: Erro na verificacao do webhook: {e}")
         return False
 
 def test_whatsapp_message_webhook():
