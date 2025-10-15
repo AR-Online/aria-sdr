@@ -24,7 +24,7 @@ from urllib3.util.retry import Retry  # pyright: ignore[reportMissingImports]
 # Boot / Config
 # â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
 # Load .env without overriding existing process env (CI-friendly)
-load_dotenv(find_dotenv(), override=False)
+load_dotenv(find_dotenv(), override=True)
 DEBUG = (os.getenv("API_DEBUG", "false") or "").lower() == "true"
 app = FastAPI(title="ARIA-SDR Endpoint", debug=DEBUG)
 
