@@ -1,0 +1,26 @@
+# ARIA-SDR Reflector
+# Versão simplificada do ARIA-SDR
+
+# Arquivos de configuração
+.env
+*.log
+tmp/
+__pycache__/
+*.pyc
+*.pyo
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/

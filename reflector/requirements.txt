@@ -1,0 +1,7 @@
+# ARIA-SDR Reflector - Dependências Simplificadas
+agno
+openai
+python-dotenv
+numpy
+requests
+uvicorn
