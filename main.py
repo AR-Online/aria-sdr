@@ -1623,3 +1623,26 @@ async def verify_mindchat_webhook_real(
         return PlainTextResponse(content=hub_challenge)
     else:
         raise HTTPException(status_code=403, detail="Verification failed")
+
+# ————————————————————————————————————————————————————————————————————————————————————————————————
+# Server startup
+# ————————————————————————————————————————————————————————————————————————————————————————————————
+if __name__ == "__main__":
+    import uvicorn
+    
+    # Get configuration from environment
+    host = os.getenv("HOST", "localhost")
+    port = int(os.getenv("PORT", "7777"))
+    
+    print(f"Iniciando ARIA-SDR na porta {port}")
+    print(f"Interface: http://localhost:3000")
+    print(f"API: http://{host}:{port}")
+    print(f"Docs: http://{host}:{port}/docs")
+    
+    uvicorn.run(
+        "main:app",
+        host=host,
+        port=port,
+        reload=True,
+        log_level="info"
+    )

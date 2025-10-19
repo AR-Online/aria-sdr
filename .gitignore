@@ -15,10 +15,24 @@ __pycache__/
 env/
 venv/
 .venv/
+agno_env/
 
-# Logs
+# Ambiente e Configuração
+.env
+.env.*
+.env.local
+.env.*.local
+env.working
+*.env.working
+*.env
+
+# Logs e Debug
 *.log
 logs/
+assist_debug.log
+last_error.log
+uvicorn.err
+uvicorn.out
 
 # OS
 .DS_Store
@@ -27,7 +41,31 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
 # Temporary files
 tmp/
 temp/
+*.tmp
+*.bak
+*.backup
+
+# Arquivos de backup e duplicados
+*_backup.py
+*_old.py
+*_temp.py
+main_agno*.py
+!main.py
+
+# Banco de dados local
+*.db
+*.sqlite
+*.sqlite3
+
+# Arquivos específicos do projeto
+teste_*.py
+!teste_conexoes_mindchat.py
+!teste_env.py
+!teste_mindchat_real_token.py
