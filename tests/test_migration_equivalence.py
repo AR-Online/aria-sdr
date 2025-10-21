@@ -4,6 +4,7 @@ Testes de Equivalencia n8n -> Agno
 ARIA-SDR - Validacao de Migracao
 """
 
+import os
 import pytest
 from fastapi.testclient import TestClient
 

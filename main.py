@@ -28,6 +28,22 @@ load_dotenv(find_dotenv(), override=True)
 DEBUG = (os.getenv("API_DEBUG", "false") or "").lower() == "true"
 app = FastAPI(title="ARIA-SDR Endpoint", debug=DEBUG)
 
+# Configure CORS for frontend communication
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 API_TOKEN = (os.getenv("FASTAPI_BEARER_TOKEN") or "").strip()
 auth_scheme = HTTPBearer(auto_error=False)
 log = logging.getLogger(__name__)
@@ -930,6 +946,111 @@ def whatsapp_status(_tok: str = Depends(require_auth)):
 @app.get("/healthz")
 def healthz():
     return {"ok": True}
+
+
+@app.get("/agents")
+def get_agents():
+    """Retorna lista de agentes disponíveis para a interface Agent UI"""
+    return [
+        {
+            "id": "aria-sdr",
+            "name": "ARIA-SDR",
+            "db_id": "aria-sdr-agent",
+            "model": {
+                "id": "gpt-4o-mini",
+                "name": "GPT-4o Mini",
+                "provider": "OpenAI"
+            }
+        }
+    ]
+
+
+@app.get("/teams")
+def get_teams():
+    """Retorna lista de teams disponíveis para a interface Agent UI"""
+    return []
+
+
+@app.get("/sessions")
+def get_sessions(
+    type: str = "agent",
+    component_id: str = None,
+    db_id: str = None
+):
+    """Retorna lista de sessões/conversas do agente"""
+    # Por enquanto retorna lista vazia - pode ser implementado com banco de dados
+    return []
+
+
+@app.post("/agents/{agent_id}/runs")
+async def agent_run(agent_id: str, request: Request):
+    """Executa o agente e retorna resposta"""
+    from fastapi.responses import StreamingResponse
+    import json
+    
+    try:
+        body = await request.json()
+        message = body.get("message", "")
+        session_id = body.get("session_id", None)
+        
+        if not message:
+            async def error_stream():
+                yield f"data: {json.dumps({'error': 'Message is required'})}\n\n"
+            return StreamingResponse(error_stream(), media_type="text/event-stream")
+        
+        log.info(f"Processing message from agent_run: {message}")
+        
+        # Processar mensagem através da lógica de routing
+        try:
+            # Usar o endpoint de routing existente
+            routing_payload = {
+                "user_text": message,
+                "variables": {},
+                "thread_id": session_id
+            }
+            
+            # Criar request fake para passar para assist_routing
+            from fastapi import Body
+            
+            # Chamar a função de routing diretamente
+            routing_response = assist_routing(
+                request=request,
+                payload=routing_payload,
+                _tok=API_TOKEN
+            )
+            
+            response_text = routing_response.reply_text
+            
+            log.info(f"Route: {routing_response.route}, Response generated")
+            
+            # Retornar resposta em formato de streaming
+            async def response_stream():
+                # Enviar evento de início
+                yield f"data: {json.dumps({'event': 'workflow_started', 'run_id': session_id or 'default'})}\n\n"
+                
+                # Enviar conteúdo
+                yield f"data: {json.dumps({'event': 'run_response', 'content': response_text})}\n\n"
+                
+                # Enviar evento de conclusão
+                yield f"data: {json.dumps({'event': 'workflow_completed', 'content': response_text, 'messages': [{'role': 'user', 'content': message}, {'role': 'assistant', 'content': response_text}]})}\n\n"
+            
+            return StreamingResponse(response_stream(), media_type="text/event-stream")
+            
+        except Exception as e:
+            log.error(f"Error processing message: {e}")
+            import traceback
+            traceback.print_exc()
+            async def error_stream():
+                yield f"data: {json.dumps({'event': 'run_response', 'content': 'Desculpe, ocorreu um erro ao processar sua mensagem.'})}\n\n"
+            return StreamingResponse(error_stream(), media_type="text/event-stream")
+            
+    except Exception as e:
+        log.error(f"Erro em agent_run: {e}")
+        import traceback
+        traceback.print_exc()
+        async def error_stream():
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+        return StreamingResponse(error_stream(), media_type="text/event-stream")
 
 
 @app.get("/auth_debug")
