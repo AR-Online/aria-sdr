@@ -42,6 +42,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],  # Permite que o frontend leia headers do streaming
 )
 
 API_TOKEN = (os.getenv("FASTAPI_BEARER_TOKEN") or "").strip()
@@ -987,6 +988,7 @@ async def agent_run(agent_id: str, request: Request):
     """Executa o agente e retorna resposta"""
     from fastapi.responses import StreamingResponse
     import json
+    import requests
     
     try:
         body = await request.json()
@@ -1002,26 +1004,29 @@ async def agent_run(agent_id: str, request: Request):
         
         # Processar mensagem através da lógica de routing
         try:
-            # Usar o endpoint de routing existente
+            # Chamar o endpoint de routing via HTTP interno
             routing_payload = {
                 "user_text": message,
                 "variables": {},
                 "thread_id": session_id
             }
             
-            # Criar request fake para passar para assist_routing
-            from fastapi import Body
-            
-            # Chamar a função de routing diretamente
-            routing_response = assist_routing(
-                request=request,
-                payload=routing_payload,
-                _tok=API_TOKEN
+            # Fazer chamada HTTP interna com autenticação
+            response = requests.post(
+                "http://localhost:7777/assist/routing",
+                json=routing_payload,
+                headers={"Authorization": f"Bearer {API_TOKEN}"},
+                timeout=30
             )
             
-            response_text = routing_response.reply_text
+            if response.status_code != 200:
+                raise Exception(f"Routing API returned status {response.status_code}")
             
-            log.info(f"Route: {routing_response.route}, Response generated")
+            routing_result = response.json()
+            response_text = routing_result.get("reply_text", "Desculpe, não consegui processar sua mensagem.")
+            route = routing_result.get("route", "unknown")
+            
+            log.info(f"Route: {route}, Response generated")
             
             # Retornar resposta em formato de streaming
             async def response_stream():
